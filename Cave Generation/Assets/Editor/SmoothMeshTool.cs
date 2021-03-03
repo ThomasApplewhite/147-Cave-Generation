@@ -312,11 +312,11 @@ public class SmoothMeshTool : EditorWindow
         _Start = EditorGUILayout.Vector3Field("Start point", _Start);
         _End = EditorGUILayout.Vector3Field("End point", _End);
         _Diff = _End - _Start;
+        _CellSize = 1f;
         _CellSize = EditorGUILayout.FloatField("Cell size", _CellSize);
         _XCount = Mathf.Abs((int) (_Diff.x / _CellSize));
         _YCount = Mathf.Abs((int) (_Diff.y / _CellSize));
         _ZCount = Mathf.Abs((int) (_Diff.z / _CellSize));
-        Debug.Log(_XCount);
     
         if(GUILayout.Button("Smooth Mesh with Marching Cubes"))
         {
@@ -420,13 +420,16 @@ public class SmoothMeshTool : EditorWindow
             genVerts[i] = vertices[i];
         }
         generatedMesh.vertices = genVerts;
-        int[] triIndices = new int[tris.Count * 3];
+        int[] triIndices = new int[tris.Count * 6];
 
-        for(int i =0; i<tris.Count; i++)
+        for(int i =0; i<tris.Count; i++) //forwards and backwards triangles for backfaces
         {
-            triIndices[(i*3)] =(int) tris[i].x;
-            triIndices[(i * 3) + 1] =(int) tris[i].y;
-            triIndices[(i * 3) + 2] =(int) tris[i].z;
+            triIndices[(i * 6)] =(int) tris[i].x;
+            triIndices[(i * 6) + 1] =(int) tris[i].y;
+            triIndices[(i * 6) + 2] =(int) tris[i].z;
+            triIndices[(i * 6) + 3] =(int) tris[i].z;
+            triIndices[(i * 6) + 4] =(int) tris[i].y;
+            triIndices[(i * 6) + 5] =(int) tris[i].x;
         }
         generatedMesh.triangles = triIndices;
         Debug.Log(vertices.Count);
@@ -595,6 +598,8 @@ public class SmoothMeshTool : EditorWindow
                 Vector3 Pos = new Vector3(_Start.x + _CellSize * x, _Start.y + _CellSize * y, _Start.z + _CellSize * (z+1));
                 Vector3 P = Pos * 3.0f;
                 Grid[x * _YCount + y] = Mathf.Sin(P.x * P.y + P.x * P.z + P.y * P.z) + Mathf.Sin(P.x * P.y) + Mathf.Sin(P.y * P.z) + Mathf.Sin(P.x * P.z) - 1.0f;//Pos.x * Pos.x + Pos.y * Pos.y + Pos.z * Pos.z - 1.0f;
+                //Grid[x * _YCount + y] = Noise(x, y, z);
+                //Debug.Log(Noise(x, y, z));
             }
         }
     }
