@@ -3,13 +3,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 
-//algorithm and some code taken from here: http://paulbourke.net/geometry/polygonise/
+//algorithm and some code taken from here: http://paulbourke.net/geometry/polygonise/ and here https://graphics.stanford.edu/~mdfisher/MarchingCubes.html
 
 public class SmoothMeshTool : EditorWindow
 {
-    Mesh inputMesh;
     Mesh generatedMesh;
-    Object input;
     [MenuItem ("Window/SmoothMeshTool")]
     public static void  ShowWindow () {
         EditorWindow.GetWindow(typeof(SmoothMeshTool));
@@ -311,22 +309,19 @@ public class SmoothMeshTool : EditorWindow
 
     void OnGUI () {
         GUILayout.Label ("Base Settings", EditorStyles.boldLabel);
-        input = EditorGUILayout.ObjectField ("Mesh to smooth: ", inputMesh, typeof(Mesh), true);
-        /*if(input != null)
-        {
-            inputMesh = ((GameObject)input).GetComponent<Mesh>();
-        }*/
-        _Diff = _Start - _End;
-        _CellSize = .5f;
+        _Start = EditorGUILayout.Vector3Field("Start point", _Start);
+        _End = EditorGUILayout.Vector3Field("End point", _End);
+        _Diff = _End - _Start;
+        _CellSize = EditorGUILayout.FloatField("Cell size", _CellSize);
         _XCount = Mathf.Abs((int) (_Diff.x / _CellSize));
         _YCount = Mathf.Abs((int) (_Diff.y / _CellSize));
         _ZCount = Mathf.Abs((int) (_Diff.z / _CellSize));
         Debug.Log(_XCount);
-        _Start = new Vector3(0, 0, 0);
-        _End = new Vector3(15, 15, 15);
     
         if(GUILayout.Button("Smooth Mesh with Marching Cubes"))
         {
+            vertices = new List<Vector3>();
+            tris = new List<Vector3>();
             GenerateMesh();
         }
     }
@@ -347,9 +342,9 @@ public class SmoothMeshTool : EditorWindow
     Vector3 _End;
     Vector3 _Diff;
     float _CellSize;
-    int _XCount;
-    int _YCount;
-    int _ZCount;
+    public int _XCount;
+    public int _YCount;
+    public int _ZCount;
 
 
     void GenerateMesh()
@@ -418,52 +413,6 @@ public class SmoothMeshTool : EditorWindow
         AssetDatabase.CreateAsset( generatedMesh, "Assets/genMesh.asset" );
         AssetDatabase.SaveAssets();*/
         #endregion 
-        /*for(int x = 0; x < 20 ; x++)
-        {
-		    for(int y = 0; y < 20; y++)
-		    {
-                for(int z = 0; z<20; z++)
-                {
-                    GridData g;
-			        float[] samples = { Noise(x+offsets[0].x, y+offsets[0].y, z+offsets[0].y),
-                                        Noise(x+offsets[1].x, y+offsets[1].y, z+offsets[1].y),
-                                        Noise(x+offsets[2].x, y+offsets[2].y, z+offsets[2].y),
-                                        Noise(x+offsets[3].x, y+offsets[3].y, z+offsets[3].y),
-                                        Noise(x+offsets[4].x, y+offsets[4].y, z+offsets[4].y),
-                                        Noise(x+offsets[5].x, y+offsets[5].y, z+offsets[5].y),
-                                        Noise(x+offsets[6].x, y+offsets[6].y, z+offsets[6].y),
-                                        Noise(x+offsets[7].x, y+offsets[7].y, z+offsets[7].y)};
-
-                    g.value = samples;
-
-			        Vector3[] locations = {new Vector3(x+offsets[0].x, y+offsets[0].y, z+offsets[0].y),
-                                        new Vector3(x+offsets[1].x, y+offsets[1].y, z+offsets[1].y),
-                                        new Vector3(x+offsets[2].x, y+offsets[2].y, z+offsets[2].y),
-                                        new Vector3(x+offsets[3].x, y+offsets[3].y, z+offsets[3].y),
-                                        new Vector3(x+offsets[4].x, y+offsets[4].y, z+offsets[4].y),
-                                        new Vector3(x+offsets[5].x, y+offsets[5].y, z+offsets[5].y),
-                                        new Vector3(x+offsets[6].x, y+offsets[6].y, z+offsets[6].y),
-                                        new Vector3(x+offsets[7].x, y+offsets[7].y, z+offsets[7].y)};
-
-                    g.loc = locations;
-
-			        bool Valid = true;
-			        for(int VertexIndex = 0; VertexIndex < 8 && Valid; VertexIndex++)
-			        {
-				        if(g.value[VertexIndex] == float.MaxValue)
-				        {
-					        Valid = false;
-                            Debug.LogError("INVALID VALUE");
-				        }
-			        }
-			        if(Valid)
-			        {
-				        PushPolygons(g);
-			        }
-                                    
-                }
-		    }
-        }*/
         generatedMesh = new Mesh();
         Vector3[] genVerts = new Vector3[vertices.Count];
         for(int i =0; i<vertices.Count; i++)
