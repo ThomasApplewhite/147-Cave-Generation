@@ -312,11 +312,13 @@ public class SmoothMeshTool : EditorWindow
         _Start = EditorGUILayout.Vector3Field("Start point", _Start);
         _End = EditorGUILayout.Vector3Field("End point", _End);
         _Diff = _End - _Start;
-        _CellSize = 1f;
+        _CellSize =.75f;
         _CellSize = EditorGUILayout.FloatField("Cell size", _CellSize);
         _XCount = Mathf.Abs((int) (_Diff.x / _CellSize));
         _YCount = Mathf.Abs((int) (_Diff.y / _CellSize));
         _ZCount = Mathf.Abs((int) (_Diff.z / _CellSize));
+        _IsoLevel = EditorGUILayout.FloatField("Iso Level", _IsoLevel);
+        _PerlinScale = EditorGUILayout.FloatField("Perlin Scale", _PerlinScale);
     
         if(GUILayout.Button("Smooth Mesh with Marching Cubes"))
         {
@@ -345,10 +347,13 @@ public class SmoothMeshTool : EditorWindow
     public int _XCount;
     public int _YCount;
     public int _ZCount;
-
+    float _IsoLevel;
+    float _PerlinScale;
 
     void GenerateMesh()
     {
+        vertices.Clear();
+        tris.Clear();
         float[] TopGrid = new float[_XCount * _YCount];
         float[] BottomGrid = new float[_XCount * _YCount];
         FillGrid(TopGrid, 0);
@@ -414,10 +419,17 @@ public class SmoothMeshTool : EditorWindow
         AssetDatabase.SaveAssets();*/
         #endregion 
         generatedMesh = new Mesh();
-        Vector3[] genVerts = new Vector3[vertices.Count];
+        Vector3[] genVerts = new Vector3[vertices.Count * 2];
+        Vector3[] meshNormals = new Vector3[vertices.Count * 2];
         for(int i =0; i<vertices.Count; i++)
         {
             genVerts[i] = vertices[i];
+            //meshNormals[i] = CalcNormal(vertices[i], i);
+        }
+        for(int i = vertices.Count; i< 2 * vertices.Count; i++)
+        {
+            genVerts[i] = vertices[i - vertices.Count];
+            //meshNormals[i] = -CalcGradient(vertices[i - vertices.Count]);
         }
         generatedMesh.vertices = genVerts;
         int[] triIndices = new int[tris.Count * 6];
@@ -427,14 +439,65 @@ public class SmoothMeshTool : EditorWindow
             triIndices[(i * 6)] =(int) tris[i].x;
             triIndices[(i * 6) + 1] =(int) tris[i].y;
             triIndices[(i * 6) + 2] =(int) tris[i].z;
-            triIndices[(i * 6) + 3] =(int) tris[i].z;
-            triIndices[(i * 6) + 4] =(int) tris[i].y;
-            triIndices[(i * 6) + 5] =(int) tris[i].x;
+            Vector3 cross = Vector3.Cross(genVerts[triIndices[(i * 6) + 1]] - genVerts[triIndices[(i * 6)]], genVerts[triIndices[(i * 6) + 2]] - genVerts[triIndices[(i * 6)]]);
+            meshNormals[triIndices[(i * 6)]] += cross;
+            meshNormals[triIndices[(i * 6) + 1]] += cross;
+            meshNormals[triIndices[(i * 6) + 2]] += cross;
+            triIndices[(i * 6) + 3] =(int) tris[i].z + vertices.Count;
+            triIndices[(i * 6) + 4] =(int) tris[i].y + vertices.Count;
+            triIndices[(i * 6) + 5] =(int) tris[i].x + vertices.Count;
+            cross = Vector3.Cross(genVerts[triIndices[(i * 6) + 4]] - genVerts[triIndices[(i * 6) + 3]], genVerts[triIndices[(i * 3) + 2]] - genVerts[triIndices[(i * 6) + 5]]);
+            meshNormals[triIndices[(i * 6) + 3]] += -cross;
+            meshNormals[triIndices[(i * 6) + 4]] += -cross;
+            meshNormals[triIndices[(i * 6) + 5]] += -cross;
+        }
+        Debug.Log("Tris: " +tris.Count);
+        Debug.Log("Mesh: " +meshNormals.Length);
+        vertices.Clear();
+        tris.Clear();
+        for(int i = 0; i<meshNormals.Length; i++)
+        {
+            meshNormals[i] = Vector3.Normalize(meshNormals[i]);
+            if(meshNormals[i] == Vector3.zero)
+            {
+                Debug.LogError("Zero Normal");
+            }
         }
         generatedMesh.triangles = triIndices;
+        generatedMesh.normals = meshNormals;
         Debug.Log(vertices.Count);
         AssetDatabase.CreateAsset( generatedMesh, "Assets/genMesh.asset" );
         AssetDatabase.SaveAssets();
+    }
+
+    Vector3 CalcNormal(Vector3 position, int index)
+    {
+        /*float value = Mathf.Sin(position.x * position.y + position.x * position.z + position.y * position.z) + Mathf.Sin(position.x * position.y) + Mathf.Sin(position.y * position.z) + Mathf.Sin(position.x * position.z) - 1.0f;
+        Vector3 normal = new Vector3();
+        normal.x = TestFunction(new Vector3(position.x - .0003f, position.y, position.z)) - value;
+        normal.y = TestFunction(new Vector3(position.x , position.y- .0003f, position.z)) - value;
+        normal.z = TestFunction(new Vector3(position.x , position.y, position.z- .0003f)) - value;
+        return normal.normalized;*/
+        Vector3 normal;
+        if(index == 0)
+        {
+            Vector3 ab = vertices[index + 1] - vertices[index];
+            Vector3 ac = vertices[vertices.Count-1] - vertices[index];
+            normal = Vector3.Cross(ab, ac).normalized;
+        }
+        else if (index == vertices.Count - 1)
+        {
+            Vector3 ab = vertices[0] - vertices[index];
+            Vector3 ac = vertices[index - 1] - vertices[index];
+            normal = Vector3.Cross(ab, ac).normalized;
+        }
+        else
+        {
+            Vector3 ab = vertices[index + 1] - vertices[index];
+            Vector3 ac = vertices[index - 1] - vertices[index];
+            normal = Vector3.Cross(ab, ac).normalized;
+        }
+        return normal;
     }
 
     struct GridData{
@@ -536,14 +599,9 @@ public class SmoothMeshTool : EditorWindow
         int IndexShift = vertices.Count;
         List<Vector3> vertStorage = new List<Vector3>();
         List<Vector3> triStorage = new List<Vector3>();
-	    int NewFaceCount = Polygonize(g, 0.0f, triStorage, vertStorage, out NewVertexCount);
-        if(NewVertexCount != 0)
-        {
-            Debug.Log("New vert Count: " + NewVertexCount);
-        }
+	    int NewFaceCount = Polygonize(g, _IsoLevel, triStorage, vertStorage, out NewVertexCount);
 	    if(NewFaceCount != 0)
 	    {
-            Debug.Log("New Face Count: " + NewFaceCount);
 		    for(int FaceIndex = 0; FaceIndex < NewFaceCount; FaceIndex++)
 		    {
                 Vector3 thisTri = triStorage[FaceIndex];
@@ -556,7 +614,6 @@ public class SmoothMeshTool : EditorWindow
 		    for(int VertexIndex = 0; VertexIndex < NewVertexCount; VertexIndex++)
 		    {
 			    vertices.Add(vertStorage[VertexIndex]);
-                Debug.Log("Adding Verts");
 		    }
 		    return true;
 	    }
@@ -591,17 +648,33 @@ public class SmoothMeshTool : EditorWindow
   
     void FillGrid(float[] Grid, int z)
     {
-        for (int x = 0; x<_XCount; x++)
+        for (int x = 0; x< _XCount; x++)
         {
-            for(int y = 0; y<_YCount; y++)
+            for(int y = 0; y< _YCount; y++)
             {
-                Vector3 Pos = new Vector3(_Start.x + _CellSize * x, _Start.y + _CellSize * y, _Start.z + _CellSize * (z+1));
-                Vector3 P = Pos * 3.0f;
-                Grid[x * _YCount + y] = Mathf.Sin(P.x * P.y + P.x * P.z + P.y * P.z) + Mathf.Sin(P.x * P.y) + Mathf.Sin(P.y * P.z) + Mathf.Sin(P.x * P.z) - 1.0f;//Pos.x * Pos.x + Pos.y * Pos.y + Pos.z * Pos.z - 1.0f;
+                Vector3 Pos = new Vector3(_Start.x + _CellSize * x, _Start.y + _CellSize * y, _Start.z + _CellSize * (z));
+                
+                //Grid[x * _YCount + y] = Mathf.Sin(P.x * P.y + P.x * P.z + P.y * P.z) + Mathf.Sin(P.x * P.y) + Mathf.Sin(P.y * P.z) + Mathf.Sin(P.x * P.z) - 1.0f;//Pos.x * Pos.x + Pos.y * Pos.y + Pos.z * Pos.z - 1.0f;
                 //Grid[x * _YCount + y] = Noise(x, y, z);
-                //Debug.Log(Noise(x, y, z));
+                //Grid[x * _YCount + y] = Noise(Pos.x * _PerlinScale, Pos.y *_PerlinScale, Pos.z * _PerlinScale);
+                //Debug.Log(Noise(_Start.x + _CellSize * x,  _Start.y + _CellSize * y, _Start.z + _CellSize * (z+1)));
+                Grid[x * _YCount + y] = (Mathf.PerlinNoise(Pos.x * _PerlinScale, Pos.y *_PerlinScale) * 2) -1.0f;
             }
         }
+    }
+
+    float SphereFunction(Vector3 Pos)
+    {
+        return Pos.x * Pos.x + Pos.y * Pos.y + Pos.z * Pos.z - 1.0f;
+    }
+
+    float CrazyFunction(Vector3 Pos){
+        Vector3 P = Pos * 3.0f;
+        return Mathf.Sin(P.x * P.y + P.x * P.z + P.y * P.z) + Mathf.Sin(P.x * P.y) + Mathf.Sin(P.y * P.z) + Mathf.Sin(P.x * P.z) - 1.0f;//Pos.x * Pos.x + Pos.y * Pos.y + Pos.z * Pos.z - 1.0f;
+    }
+
+    float TestFunction(Vector3 Pos) {
+        return 2.5f - Mathf.Sqrt(Pos.x*Pos.x + Pos.y*Pos.y);
     }
     
     void PolygonizeGrids(float[] TopVals, float[] BottomVals, int z)
@@ -684,7 +757,7 @@ public class SmoothMeshTool : EditorWindow
         return a + t * (b - a);
     }
 
-        static int[] perm = {
+    static int[] perm = {
         151,160,137,91,90,15,
         131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
         190, 6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
