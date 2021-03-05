@@ -312,7 +312,7 @@ public class SmoothMeshTool : EditorWindow
         _Start = EditorGUILayout.Vector3Field("Start point", _Start);
         _End = EditorGUILayout.Vector3Field("End point", _End);
         _Diff = _End - _Start;
-        _CellSize =.75f;
+        _CellSize =1.0f;
         _CellSize = EditorGUILayout.FloatField("Cell size", _CellSize);
         _XCount = Mathf.Abs((int) (_Diff.x / _CellSize));
         _YCount = Mathf.Abs((int) (_Diff.y / _CellSize));
@@ -356,8 +356,8 @@ public class SmoothMeshTool : EditorWindow
         tris.Clear();
         float[] TopGrid = new float[_XCount * _YCount];
         float[] BottomGrid = new float[_XCount * _YCount];
-        FillGrid(TopGrid, 0);
-        for(int z = 1; z<_ZCount - 1; z++)
+        FillGrid(TopGrid, (int)_Start.z);
+        for(int z = (int)_Start.z + 1; z< _Start.z +_ZCount - 1; z++)
         {
             FillGrid(BottomGrid, z);
             if(z%2 == 1)
@@ -370,54 +370,6 @@ public class SmoothMeshTool : EditorWindow
             }
         }
 
-        #region old implementation
-        /*generatedMesh = new Mesh();
-        for(int x = 0; x < 2; x++) //triangles contains indecies of vertices in mesh.vertices
-        {
-            for(int y = 0; y<2; y++)
-            {
-                for(int z = 0; z < 2; z++)
-                {
-                    GridData thisSample = new GridData();
-                    float[] samples = { Noise(x+offsets[0].x, y+offsets[0].y, z+offsets[0].y),
-                                        Noise(x+offsets[1].x, y+offsets[1].y, z+offsets[1].y),
-                                        Noise(x+offsets[2].x, y+offsets[2].y, z+offsets[2].y),
-                                        Noise(x+offsets[3].x, y+offsets[3].y, z+offsets[3].y),
-                                        Noise(x+offsets[4].x, y+offsets[4].y, z+offsets[4].y),
-                                        Noise(x+offsets[5].x, y+offsets[5].y, z+offsets[5].y),
-                                        Noise(x+offsets[6].x, y+offsets[6].y, z+offsets[6].y),
-                                        Noise(x+offsets[7].x, y+offsets[7].y, z+offsets[7].y)};
-                    thisSample.value = samples;
-                    Vector3[] locations = {new Vector3(x+offsets[0].x, y+offsets[0].y, z+offsets[0].y),
-                                        new Vector3(x+offsets[1].x, y+offsets[1].y, z+offsets[1].y),
-                                        new Vector3(x+offsets[2].x, y+offsets[2].y, z+offsets[2].y),
-                                        new Vector3(x+offsets[3].x, y+offsets[3].y, z+offsets[3].y),
-                                        new Vector3(x+offsets[4].x, y+offsets[4].y, z+offsets[4].y),
-                                        new Vector3(x+offsets[5].x, y+offsets[5].y, z+offsets[5].y),
-                                        new Vector3(x+offsets[6].x, y+offsets[6].y, z+offsets[6].y),
-                                        new Vector3(x+offsets[7].x, y+offsets[7].y, z+offsets[7].y)};
-                    thisSample.loc = locations;
-                    int numVerts;
-                    int size = Polygonize(thisSample, .25f, tris, vertices, out numVerts);
-                }
-            }
-        }
-        Vector3[] genVerts = new Vector3[vertices.Count];
-        for(int i =0; i<vertices.Count; i++)
-        {
-            genVerts[i] = vertices[i];
-        }
-        generatedMesh.vertices = genVerts;
-        int[] triIndices = new int[tris.Count];
-        for(int i =0; i<tris.Count; i++)
-        {
-            triIndices[i] = tris[i];
-        }
-        generatedMesh.triangles = triIndices;
-        Debug.Log(generatedMesh.vertices.Length);
-        AssetDatabase.CreateAsset( generatedMesh, "Assets/genMesh.asset" );
-        AssetDatabase.SaveAssets();*/
-        #endregion 
         generatedMesh = new Mesh();
         Vector3[] genVerts = new Vector3[vertices.Count * 2];
         Vector3[] meshNormals = new Vector3[vertices.Count * 2];
@@ -622,8 +574,7 @@ public class SmoothMeshTool : EditorWindow
 
     Vector3 VertexInterp(float isoLevel, Vector3 p1, Vector3 p2, float valp1, float valp2)
     {
-        #region old impl
-        /*if(Mathf.Abs(isoLevel - valp1) < .00001f)
+        if(Mathf.Abs(isoLevel - valp1) < .00001f)
         {
             return p1;
         }
@@ -641,24 +592,27 @@ public class SmoothMeshTool : EditorWindow
         p[0] = p1[0] + mu * (p2[0] - p1[0]);
         p[1] = p1[1] + mu * (p2[1] - p1[1]);
         p[2] = p1[2] + mu * (p2[2] - p1[2]);
-        return p;*/
-        #endregion
-        return (p1 + (-valp1 / (valp2 - valp1)) * (p2-p1));
+        return p;
+        //return (p1 + (-valp1 / (valp2 - valp1)) * (p2-p1));
     }
   
     void FillGrid(float[] Grid, int z)
     {
-        for (int x = 0; x< _XCount; x++)
+        for (int x = (int)_Start.x; x< _XCount + _Start.x; x++)
         {
-            for(int y = 0; y< _YCount; y++)
+            for(int y = (int)_Start.y; y< _YCount + _Start.y; y++)
             {
                 Vector3 Pos = new Vector3(_Start.x + _CellSize * x, _Start.y + _CellSize * y, _Start.z + _CellSize * (z));
                 
                 //Grid[x * _YCount + y] = Mathf.Sin(P.x * P.y + P.x * P.z + P.y * P.z) + Mathf.Sin(P.x * P.y) + Mathf.Sin(P.y * P.z) + Mathf.Sin(P.x * P.z) - 1.0f;//Pos.x * Pos.x + Pos.y * Pos.y + Pos.z * Pos.z - 1.0f;
                 //Grid[x * _YCount + y] = Noise(x, y, z);
-                //Grid[x * _YCount + y] = Noise(Pos.x * _PerlinScale, Pos.y *_PerlinScale, Pos.z * _PerlinScale);
+                //Grid[(int)(x-_Start.x) * _YCount + (int)(y - _Start.y)] = Noise(Pos.x * _PerlinScale, Pos.y *_PerlinScale, Pos.z * _PerlinScale);
                 //Debug.Log(Noise(_Start.x + _CellSize * x,  _Start.y + _CellSize * y, _Start.z + _CellSize * (z+1)));
-                Grid[x * _YCount + y] = (Mathf.PerlinNoise(Pos.x * _PerlinScale, Pos.y *_PerlinScale) * 2) -1.0f;
+                //Grid[(int)(x-_Start.x) * _YCount + (int)(y - _Start.y)] = (Mathf.PerlinNoise(Pos.x * _PerlinScale, Pos.y *_PerlinScale) * 2) -1.0f;
+                //Grid[(int)(x-_Start.x) * _YCount + (int)(y - _Start.y)] = PerlinNoise3D(Pos.x * _PerlinScale, Pos.y *_PerlinScale, Pos.z * _PerlinScale);
+                //Debug.Log(PerlinNoise3D(Pos.x * _PerlinScale, Pos.y *_PerlinScale, Pos.z * _PerlinScale));
+                //Grid[(int)(x-_Start.x) * _YCount + (int)(y - _Start.y)] = Mathf.Pow(x, 2) + Mathf.Pow(y, 2) + Mathf.Pow(z, 2) - 4.0f; // sphere?
+                Grid[(int)(x-_Start.x) * _YCount + (int)(y - _Start.y)] = CrazyFunction(Pos);
             }
         }
     }
@@ -723,6 +677,47 @@ public class SmoothMeshTool : EditorWindow
     } 
 
     #region 3D Noise
+    private static Vector3[] gradients3D = {
+		new Vector3( 1f, 1f, 0f),
+		new Vector3(-1f, 1f, 0f),
+		new Vector3( 1f,-1f, 0f),
+		new Vector3(-1f,-1f, 0f),
+		new Vector3( 1f, 0f, 1f),
+		new Vector3(-1f, 0f, 1f),
+		new Vector3( 1f, 0f,-1f),
+		new Vector3(-1f, 0f,-1f),
+		new Vector3( 0f, 1f, 1f),
+		new Vector3( 0f,-1f, 1f),
+		new Vector3( 0f, 1f,-1f),
+		new Vector3( 0f,-1f,-1f),
+		
+		new Vector3( 1f, 1f, 0f),
+		new Vector3(-1f, 1f, 0f),
+		new Vector3( 0f,-1f, 1f),
+		new Vector3( 0f,-1f,-1f)
+	};
+
+    private const int hashMask = 255;
+    private const int gradientsMask3D = 15;
+
+    private static int[] hash = {
+		151,160,137, 91, 90, 15,131, 13,201, 95, 96, 53,194,233,  7,225,
+		140, 36,103, 30, 69,142,  8, 99, 37,240, 21, 10, 23,190,  6,148,
+		247,120,234, 75,  0, 26,197, 62, 94,252,219,203,117, 35, 11, 32,
+		 57,177, 33, 88,237,149, 56, 87,174, 20,125,136,171,168, 68,175,
+		 74,165, 71,134,139, 48, 27,166, 77,146,158,231, 83,111,229,122,
+		 60,211,133,230,220,105, 92, 41, 55, 46,245, 40,244,102,143, 54,
+		 65, 25, 63,161,  1,216, 80, 73,209, 76,132,187,208, 89, 18,169,
+		200,196,135,130,116,188,159, 86,164,100,109,198,173,186,  3, 64,
+		 52,217,226,250,124,123,  5,202, 38,147,118,126,255, 82, 85,212,
+		207,206, 59,227, 47, 16, 58, 17,182,189, 28, 42,223,183,170,213,
+		119,248,152,  2, 44,154,163, 70,221,153,101,155,167, 43,172,  9,
+		129, 22, 39,253, 19, 98,108,110, 79,113,224,232,178,185,112,104,
+		218,246, 97,228,251, 34,242,193,238,210,144, 12,191,179,162,241,
+		 81, 51,145,235,249, 14,239,107, 49,192,214, 31,181,199,106,157,
+		184, 84,204,176,115,121, 50, 45,127,  4,150,254,138,236,205, 93,
+		222,114, 67, 29, 24, 72,243,141,128,195, 78, 66,215, 61,156,180
+	};
     //Everything in the 3D noise functions taken from https://github.com/keijiro/PerlinNoise/blob/master/Assets/Perlin.cs
     public static float Noise(float x, float y, float z)
     {
@@ -745,7 +740,66 @@ public class SmoothMeshTool : EditorWindow
                                Lerp(u, Grad(perm[AB  ], x, y-1, z  ), Grad(perm[BB  ], x-1, y-1, z  ))),
                        Lerp(v, Lerp(u, Grad(perm[AA+1], x, y  , z-1), Grad(perm[BA+1], x-1, y  , z-1)),
                                Lerp(u, Grad(perm[AB+1], x, y-1, z-1), Grad(perm[BB+1], x-1, y-1, z-1))));
+        //point *= frequency;
+        /*Vector3 point = new Vector3(x, y, z);
+        float mag = point.magnitude;
+        point = point/mag;
+		int ix0 = Mathf.FloorToInt(point.x);
+		int iy0 = Mathf.FloorToInt(point.y);
+		int iz0 = Mathf.FloorToInt(point.z);
+		float tx0 = point.x - ix0;
+		float ty0 = point.y - iy0;
+		float tz0 = point.z - iz0;
+		float tx1 = tx0 - 1f;
+		float ty1 = ty0 - 1f;
+		float tz1 = tz0 - 1f;
+		ix0 &= hashMask;
+		iy0 &= hashMask;
+		iz0 &= hashMask;
+		int ix1 = ix0 + 1;
+		int iy1 = iy0 + 1;
+		int iz1 = iz0 + 1;
+		
+		int h0 = hash[ix0];
+		int h1 = hash[ix1];
+		int h00 = hash[h0 + iy0];
+		int h10 = hash[h1 + iy0];
+		int h01 = hash[h0 + iy1];
+		int h11 = hash[h1 + iy1];
+		Vector3 g000 = gradients3D[hash[h00 + iz0] & gradientsMask3D];
+		Vector3 g100 = gradients3D[hash[h10 + iz0] & gradientsMask3D];
+		Vector3 g010 = gradients3D[hash[h01 + iz0] & gradientsMask3D];
+		Vector3 g110 = gradients3D[hash[h11 + iz0] & gradientsMask3D];
+		Vector3 g001 = gradients3D[hash[h00 + iz1] & gradientsMask3D];
+		Vector3 g101 = gradients3D[hash[h10 + iz1] & gradientsMask3D];
+		Vector3 g011 = gradients3D[hash[h01 + iz1] & gradientsMask3D];
+		Vector3 g111 = gradients3D[hash[h11 + iz1] & gradientsMask3D];
+
+		float v000 = Dot(g000, tx0, ty0, tz0);
+		float v100 = Dot(g100, tx1, ty0, tz0);
+		float v010 = Dot(g010, tx0, ty1, tz0);
+		float v110 = Dot(g110, tx1, ty1, tz0);
+		float v001 = Dot(g001, tx0, ty0, tz1);
+		float v101 = Dot(g101, tx1, ty0, tz1);
+		float v011 = Dot(g011, tx0, ty1, tz1);
+		float v111 = Dot(g111, tx1, ty1, tz1);
+
+		float tx = Smooth(tx0);
+		float ty = Smooth(ty0);
+		float tz = Smooth(tz0);
+		return mag*Mathf.Lerp(
+			Mathf.Lerp(Mathf.Lerp(v000, v100, tx), Mathf.Lerp(v010, v110, tx), ty),
+			Mathf.Lerp(Mathf.Lerp(v001, v101, tx), Mathf.Lerp(v011, v111, tx), ty),
+			tz);*/
     }
+
+    private static float Dot (Vector3 g, float x, float y, float z) {
+		return g.x * x + g.y * y + g.z * z;
+	}
+
+    private static float Smooth (float t) {
+		return t * t * t * (t * (t * 6f - 15f) + 10f);
+	}
 
     static float Fade(float t)
     {
@@ -781,5 +835,24 @@ public class SmoothMeshTool : EditorWindow
         return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);
     }
 
+    #endregion
+
+    #region alt 3D noise
+    public static float PerlinNoise3D(float x, float y, float z)
+    {
+        y += 1;
+        z += 2;
+        float xy = _perlin3DFixed(x, y);
+        float xz = _perlin3DFixed(x, z);
+        float yz = _perlin3DFixed(y, z);
+        float yx = _perlin3DFixed(y, x);
+        float zx = _perlin3DFixed(z, x);
+        float zy = _perlin3DFixed(z, y);
+        return xy * xz * yz * yx * zx * zy;
+    }
+    static float _perlin3DFixed(float a, float b)
+    {
+        return Mathf.Sin(Mathf.PI * Mathf.PerlinNoise(a, b));
+    }
     #endregion
 }
