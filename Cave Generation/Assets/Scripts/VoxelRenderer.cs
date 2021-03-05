@@ -14,10 +14,18 @@ public class VoxelRenderer : MonoBehaviour {
 	public float scale = 1f;
 
 	public int size = 10;
+	public int generatedVoxelsPerTick = 100;
 	public Vector3 origin = new Vector3(0, 0, 0);
 	//public int posX, posY, posZ;
 
+	//public in
+
 	float adjScale;
+
+	[Header("Worm Settings: X is length, Y is worm radius")]
+	public List<Vector2> wormSettings;
+
+	public GameObject dumbCube;
 
 
 
@@ -30,8 +38,54 @@ public class VoxelRenderer : MonoBehaviour {
 	void Start() {
 		//MakeCube (adjScale, new Vector3((float)posX * scale, (float)posY * scale, (float)posZ * scale));
 
-        GenerateVoxelMesh(new VoxelData(size, origin));
-		UpdateMesh ();
+		//new VoxelData(size, origin);
+        //GenerateVoxelMesh(new VoxelData(size, origin));
+		//UpdateMesh ();
+		var data = new VoxelData(size, origin);
+		foreach(Vector2 wormSetting in wormSettings)
+		{
+			Debug.Log("Worming...");
+			var worm = new PerlinWorm((int)wormSetting.x, (int)wormSetting.y);
+			worm.Wormify(data, new Vector3(data.dataWidth / 2, data.dataHeight / 2, data.dataDepth / 2));
+		}
+		StartCoroutine(PacedGenerateVoxelMesh(data));
+	}
+
+	IEnumerator PacedGenerateVoxelMesh(VoxelData data)
+	{
+		int boxCount = 0;
+		vertices = new List<Vector3> ();
+		triangles = new List<int> ();
+
+        for(int z = 0; z < data.dataDepth; ++z)
+        {
+            for(int y = 0; y < data.dataHeight; ++y)
+			{
+				for(int x = 0; x < data.dataWidth; ++x)
+            	{
+                	if(data.GetCell(x, y, z) == 0)
+                	{
+                	    continue;
+                	}
+                	else
+                	{	//
+						//Debug.Log($"Generating Voxel on {x}, {y}, {z}");
+						StupidMakeCube(new Vector3((float)x, (float)y, (float)z));
+                	    //MakeCube(adjScale, new Vector3((float)x * scale, (float)y * scale, (float)z * scale));
+						++boxCount;
+						if(boxCount > generatedVoxelsPerTick)
+						{
+							
+							boxCount = 0;
+							UpdateMesh();
+							//Debug.Log($"Resetting on {x}, {y}, {z}");
+							yield return null;
+						}
+                	}
+            	}
+			}
+        }
+		Debug.Log("Mesh Generated!");
 	}
 
     void GenerateVoxelMesh(VoxelData data)
@@ -62,6 +116,11 @@ public class VoxelRenderer : MonoBehaviour {
 		for (int i = 0; i < 6; i++) {
 			MakeFace (i, cubeScale, cubePos);
 		}
+	}
+
+	void StupidMakeCube(Vector3 position)
+	{
+		Instantiate(dumbCube, position, Quaternion.identity);
 	}
 
 	void MakeFace (int dir, float faceScale, Vector3 facePos){

@@ -19,7 +19,7 @@ public class VoxelData
 
         RNG = new System.Random();
 
-        var initializer = new Func<Vector3, int>((Vector3 vec) => randomVal(vec));
+        var initializer = new Func<Vector3, int>((Vector3 vec) => AllZeros(vec));
         
         Initialize(dataArray, originPosition, initializer);
     }
@@ -43,7 +43,7 @@ public class VoxelData
         return dataArray[x, y, z];
     }
 
-    void SetCell(int val, int x, int y, int z)
+    public void SetCell(int val, int x, int y, int z)
     {
         dataArray[x, y, z] = val;
     }
@@ -52,6 +52,7 @@ public class VoxelData
     {
         Vector3 position;
 
+        //Set each value to whatever the initializer says it should be
         for(int x = 0; x < dataWidth; ++x)
         {
             for(int y = 0; y < dataHeight; ++y)
@@ -62,10 +63,55 @@ public class VoxelData
                 }
             }
         }
+
+        //then set the origin to an open space
+        array[(int)origin.x, (int)origin.y, (int)origin.z] = 0;
     }
 
-    int randomVal(Vector3 x)
+    int AllZeros(Vector3 x)
+    {
+        return 0;
+    }
+
+    int FlatPerlinNoise(Vector3 v)
+    {
+        float val = Mathf.PerlinNoise(v.x, v.z);
+        Debug.Log($"Value {val} for vector {v}");
+        return val >= 0.5f ? 1 : 0;
+    }
+
+    int RandomVal(Vector3 x)
     {
         return RNG.Next() % 2;
+    }
+
+    int AllOnes(Vector3 x)
+    {
+        return 1;
+    }
+
+    int PerlinNoise(Vector3 v)
+    {
+        float val = PerlinNoise3D(v.x, v.y, v.z);
+        Debug.Log($"Value {val} for vector {v}");
+        return val >= 0f ? 1 : 0;
+    }
+
+    public static float PerlinNoise3D(float x, float y, float z)
+    {
+        y += 1;
+        z += 2;
+        float xy = _perlin3DFixed(x, y);
+        float xz = _perlin3DFixed(x, z);
+        float yz = _perlin3DFixed(y, z);
+        float yx = _perlin3DFixed(y, x);
+        float zx = _perlin3DFixed(z, x);
+        float zy = _perlin3DFixed(z, y);
+        return xy * xz * yz * yx * zx * zy;
+    }
+ 
+    static float _perlin3DFixed(float a, float b)
+    {
+        return Mathf.Sin(Mathf.PI * Mathf.PerlinNoise(a, b));
     }
 }
