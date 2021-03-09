@@ -10,7 +10,7 @@ using System.IO;
 public class VoxelData
 {
 
-    public int[,,] dataArray;
+    public float[,,] dataArray;
 
     private System.Random RNG;
 
@@ -19,11 +19,11 @@ public class VoxelData
     public VoxelData(int size, Vector3 originPosition)
     {
         _size = size;
-        dataArray = new int[size, size, size];
+        dataArray = new float[size, size, size];
 
         RNG = new System.Random();
 
-        var initializer = new Func<Vector3, int>((Vector3 vec) => AllZeros(vec));
+        var initializer = new Func<Vector3, float>((Vector3 vec) => AllZeros(vec));
         
         Initialize(dataArray, originPosition, initializer);
     }
@@ -42,17 +42,17 @@ public class VoxelData
         get {return dataArray.GetLength(2);}
     }
 
-    public int GetCell(int x, int y, int z)
+    public float GetCell(int x, int y, int z)
     {
         return dataArray[x, y, z];
     }
 
-    public void SetCell(int val, int x, int y, int z)
+    public void SetCell(float val, int x, int y, int z)
     {
         dataArray[x, y, z] = val;
     }
 
-    void Initialize(int[,,] array, Vector3 origin, Func<Vector3, int> initializer)
+    void Initialize(float[,,] array, Vector3 origin, Func<Vector3, float> initializer)
     {
         Vector3 position;
 
@@ -73,7 +73,7 @@ public class VoxelData
         
     }
 
-    int AllZeros(Vector3 x)
+    float AllZeros(Vector3 x)
     {
         return 0;
     }
@@ -90,12 +90,12 @@ public class VoxelData
         return RNG.Next() % 2;
     }
 
-    int AllOnes(Vector3 x)
+    float AllOnes(Vector3 x)
     {
         return 1;
     }
 
-    int PerlinNoise(Vector3 v)
+    float PerlinNoise(Vector3 v)
     {
         float val = PerlinNoise3D(v.x, v.y, v.z);
         Debug.Log($"Value {val} for vector {v}");

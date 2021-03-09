@@ -150,7 +150,7 @@ public class PerlinWorm
             {
                 for(int z = minZ; z <= maxZ; ++z)
                 {
-                    map.SetCell(1, x, y, z);
+                    map.SetCell(1/Vector3.Distance(origin, new Vector3(x, y, z)), x, y, z);
                 }
             }
         }
