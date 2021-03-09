@@ -319,12 +319,20 @@ public class SmoothMeshTool : EditorWindow
         _ZCount = Mathf.Abs((int) (_Diff.z / _CellSize));
         _IsoLevel = EditorGUILayout.FloatField("Iso Level", _IsoLevel);
         _PerlinScale = EditorGUILayout.FloatField("Perlin Scale", _PerlinScale);
+        //var renderer = EditorGUILayout.ObjectField("Cell size", renderer, typeof(VoxelRenderer));
     
         if(GUILayout.Button("Smooth Mesh with Marching Cubes"))
         {
-            vertices = new List<Vector3>();
-            tris = new List<Vector3>();
-            GenerateMesh();
+            if(!Application.isPlaying)
+            {
+                vertices = new List<Vector3>();
+                tris = new List<Vector3>();
+                GenerateMeshFunction();
+            }
+            else
+            {
+                
+            }
         }
     }
 
@@ -350,7 +358,79 @@ public class SmoothMeshTool : EditorWindow
     float _IsoLevel;
     float _PerlinScale;
 
-    void GenerateMesh()
+    void GenerateMeshFunction()
+    {
+        vertices.Clear();
+        tris.Clear();
+        float[] TopGrid = new float[_XCount * _YCount];
+        float[] BottomGrid = new float[_XCount * _YCount];
+        FillGrid(TopGrid, (int)_Start.z);
+        for(int z = (int)_Start.z + 1; z< _Start.z +_ZCount - 1; z++)
+        {
+            FillGrid(BottomGrid, z);
+            if(z%2 == 1)
+            {
+                PolygonizeGrids(TopGrid, BottomGrid, z);
+            }
+            else
+            {
+                PolygonizeGrids(BottomGrid, TopGrid, z);
+            }
+        }
+
+        generatedMesh = new Mesh();
+        Vector3[] genVerts = new Vector3[vertices.Count * 2];
+        Vector3[] meshNormals = new Vector3[vertices.Count * 2];
+        for(int i =0; i<vertices.Count; i++)
+        {
+            genVerts[i] = vertices[i];
+            //meshNormals[i] = CalcNormal(vertices[i], i);
+        }
+        for(int i = vertices.Count; i< 2 * vertices.Count; i++)
+        {
+            genVerts[i] = vertices[i - vertices.Count];
+            //meshNormals[i] = -CalcGradient(vertices[i - vertices.Count]);
+        }
+        generatedMesh.vertices = genVerts;
+        int[] triIndices = new int[tris.Count * 6];
+
+        for(int i =0; i<tris.Count; i++) //forwards and backwards triangles for backfaces
+        {
+            triIndices[(i * 6)] =(int) tris[i].x;
+            triIndices[(i * 6) + 1] =(int) tris[i].y;
+            triIndices[(i * 6) + 2] =(int) tris[i].z;
+            Vector3 cross = Vector3.Cross(genVerts[triIndices[(i * 6) + 1]] - genVerts[triIndices[(i * 6)]], genVerts[triIndices[(i * 6) + 2]] - genVerts[triIndices[(i * 6)]]);
+            meshNormals[triIndices[(i * 6)]] += cross;
+            meshNormals[triIndices[(i * 6) + 1]] += cross;
+            meshNormals[triIndices[(i * 6) + 2]] += cross;
+            triIndices[(i * 6) + 3] =(int) tris[i].z + vertices.Count;
+            triIndices[(i * 6) + 4] =(int) tris[i].y + vertices.Count;
+            triIndices[(i * 6) + 5] =(int) tris[i].x + vertices.Count;
+            cross = Vector3.Cross(genVerts[triIndices[(i * 6) + 4]] - genVerts[triIndices[(i * 6) + 3]], genVerts[triIndices[(i * 3) + 2]] - genVerts[triIndices[(i * 6) + 5]]);
+            meshNormals[triIndices[(i * 6) + 3]] += -cross;
+            meshNormals[triIndices[(i * 6) + 4]] += -cross;
+            meshNormals[triIndices[(i * 6) + 5]] += -cross;
+        }
+        Debug.Log("Tris: " +tris.Count);
+        Debug.Log("Mesh: " +meshNormals.Length);
+        vertices.Clear();
+        tris.Clear();
+        for(int i = 0; i<meshNormals.Length; i++)
+        {
+            meshNormals[i] = Vector3.Normalize(meshNormals[i]);
+            if(meshNormals[i] == Vector3.zero)
+            {
+                Debug.LogError("Zero Normal");
+            }
+        }
+        generatedMesh.triangles = triIndices;
+        generatedMesh.normals = meshNormals;
+        Debug.Log(vertices.Count);
+        AssetDatabase.CreateAsset( generatedMesh, "Assets/genMesh.asset" );
+        AssetDatabase.SaveAssets();
+    }
+
+    void GenerateMeshInput(int[,,] data)
     {
         vertices.Clear();
         tris.Clear();

@@ -34,14 +34,14 @@ public class VoxelRenderer : MonoBehaviour {
 		mesh = GetComponent<MeshFilter> ().mesh;
 		adjScale = scale * 0.5f;
 	}
-
+	public VoxelData data;
 	void Start() {
 		//MakeCube (adjScale, new Vector3((float)posX * scale, (float)posY * scale, (float)posZ * scale));
 
 		//new VoxelData(size, origin);
         //GenerateVoxelMesh(new VoxelData(size, origin));
 		//UpdateMesh ();
-		var data = new VoxelData(size, origin);
+		data = new VoxelData(size, origin);
 		foreach(Vector2 wormSetting in wormSettings)
 		{
 			Debug.Log("Worming...");

@@ -3,18 +3,22 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.IO;
 
 //This script is based off of one made by Board to Bits
 
 public class VoxelData
 {
 
-    private int[,,] dataArray;
+    public int[,,] dataArray;
 
     private System.Random RNG;
 
+    public int _size;
+
     public VoxelData(int size, Vector3 originPosition)
     {
+        _size = size;
         dataArray = new int[size, size, size];
 
         RNG = new System.Random();
@@ -66,6 +70,7 @@ public class VoxelData
 
         //then set the origin to an open space
         array[(int)origin.x, (int)origin.y, (int)origin.z] = 0;
+        
     }
 
     int AllZeros(Vector3 x)
@@ -273,4 +278,21 @@ public class VoxelData
         var v = h < 4 ? y : (h == 12 || h == 14 ? x : z);
         return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);
     }
+
+    /*public string filepath = "Assets/voxeldata.txt";
+    public void WriteToFile()
+    {
+        for(int x = 0; x < dataWidth; ++x)
+        {
+            for(int y = 0; y < dataHeight; ++y)
+            {
+                for(int z = 0; z < dataDepth; ++z)
+                {
+                    StreamWriter writer = new StreamWriter(path, true);
+                    writer.WriteLine("Test");
+                    writer.Close();
+                }
+            }
+        }
+    }*/
 }
