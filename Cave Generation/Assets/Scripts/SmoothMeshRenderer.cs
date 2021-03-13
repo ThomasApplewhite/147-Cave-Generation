@@ -348,7 +348,7 @@ public class SmoothMeshRenderer : MonoBehaviour
 		foreach(Vector2 wormSetting in wormSettings)
 		{
 			Debug.Log("Worming...");
-			var worm = new PerlinWorm((int)wormSetting.x, (int)wormSetting.y, (float)rand.NextDouble() + ctr, (float)rand.NextDouble() + ctr, (float)rand.NextDouble() + ctr);
+			var worm = new PerlinWorm((int)wormSetting.x, (int)wormSetting.y, new Vector3((data.dataWidth / 2) + offset.x, (data.dataHeight / 2) + offset.y, (data.dataDepth / 2) + offset.z), Mathf.Sin(wormSetting.x), Mathf.Cos(wormSetting.y), Mathf.Tan(wormSetting.x + wormSetting.y));
             Debug.Log("Worm center: " + new Vector3(data.dataWidth / 2, data.dataHeight / 2, data.dataDepth / 2));
 			worm.Wormify(data, new Vector3(data.dataWidth / 2, data.dataHeight / 2, data.dataDepth / 2), offset * size);
             ctr ++;

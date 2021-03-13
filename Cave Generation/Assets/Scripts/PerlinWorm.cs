@@ -33,7 +33,7 @@ public class PerlinWorm
 
     //private Vector3 realPosition = new Vector3(0, 0, 0);
     System.Random rand;
-    public PerlinWorm(int duration, int clearRange, float x=0, float y=0, float z=0)
+    public PerlinWorm(int duration, int clearRange, Vector3 origin, float x=0, float y=0, float z=0)
     {
         this.duration = duration;
         this.clearRange = clearRange;
@@ -41,10 +41,9 @@ public class PerlinWorm
         rand = new System.Random((int)(x + y + z));
         Debug.Log("PerlinWormsSeed: " + (int)(x + y + z));
 
-        this.wormRoll = (float)rand.NextDouble() * x;
-        this.wormPitch = (float)rand.NextDouble() * y;
-        this.wormYaw = (float)rand.NextDouble() * z;
-        Debug.Log($"Initializing new worm with roll: {wormRoll} pitch: {wormPitch} yaw: {wormYaw}");
+        this.wormRoll = PerlinNoise2D(x + origin.x, y + origin.y);
+        this.wormPitch = PerlinNoise2D(y + origin.y, z + origin.z);
+        this.wormYaw = PerlinNoise2D(x + origin.x, z + origin.z);
     }
 
     public void Wormify(VoxelData voxelMap, Vector3 pos, Vector3 offset, int time=0)
@@ -68,9 +67,9 @@ public class PerlinWorm
             var newPitch = wormPitch + ((PitchNoise(pos)* 270f) - 135f);
             var newYaw = wormYaw + ((YawNoise(pos)* 270f) - 135f);*/
 
-            var newRoll = wormRoll + (((float)rand.NextDouble() * 2) - 1); //this random function is going to make me SCREAM
-            var newPitch = wormPitch + (((float)rand.NextDouble() * 2) - 1);
-            var newYaw = wormYaw + (((float)rand.NextDouble() * 2) - 1);
+            var newRoll = wormRoll + PerlinNoise3D(pos.x + offset.x, pos.y + offset.y, pos.z + offset.z);//this random function is going to make me SCREAM
+            var newPitch = wormPitch + PerlinNoise3D(pos.z + offset.z, pos.x + offset.x, pos.y + offset.y);
+            var newYaw = wormYaw + PerlinNoise3D(pos.y + offset.y, pos.x + offset.x, pos.z + offset.z);
 
             wormRoll = newRoll;
             wormPitch = newPitch;
