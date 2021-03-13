@@ -41,12 +41,12 @@ public class VoxelRenderer : MonoBehaviour {
 		//new VoxelData(size, origin);
         //GenerateVoxelMesh(new VoxelData(size, origin));
 		//UpdateMesh ();
-		data = new VoxelData(size, origin);
+		data = new VoxelData(size, origin, Vector3.zero);
 		foreach(Vector2 wormSetting in wormSettings)
 		{
 			Debug.Log("Worming...");
 			var worm = new PerlinWorm((int)wormSetting.x, (int)wormSetting.y);
-			worm.Wormify(data, new Vector3(data.dataWidth / 2, data.dataHeight / 2, data.dataDepth / 2));
+			worm.Wormify(data, new Vector3(data.dataWidth / 2, data.dataHeight / 2, data.dataDepth / 2), Vector3.zero);
 		}
 		StartCoroutine(PacedGenerateVoxelMesh(data));
 	}

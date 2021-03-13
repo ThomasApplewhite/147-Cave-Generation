@@ -7,12 +7,13 @@ using UnityEditor;
 
 public class SmoothMeshRenderer : MonoBehaviour
 {
+    public Material materialToUse;
     Mesh generatedMesh;
     public float scale = 1f;
 
 	public int size = 10;
 	public int generatedVoxelsPerTick = 100;
-	public Vector3 origin = new Vector3(0, 0, 0);
+	//public Vector3 origin = new Vector3(0, 0, 0);
 
 	float adjScale;
 
@@ -313,70 +314,45 @@ public class SmoothMeshRenderer : MonoBehaviour
 
 #endregion
 
-    /*void OnGUI () {
-        GUILayout.Label ("Base Settings", EditorStyles.boldLabel);
-        _Start = EditorGUILayout.Vector3Field("Start point", _Start);
-        _End = EditorGUILayout.Vector3Field("End point", _End);
-        _Diff = _End - _Start;
-        _CellSize =1.0f;
-        _CellSize = EditorGUILayout.FloatField("Cell size", _CellSize);
-        _XCount = Mathf.Abs((int) (_Diff.x / _CellSize));
-        _YCount = Mathf.Abs((int) (_Diff.y / _CellSize));
-        _ZCount = Mathf.Abs((int) (_Diff.z / _CellSize));
-        _IsoLevel = EditorGUILayout.FloatField("Iso Level", _IsoLevel);
-        _PerlinScale = EditorGUILayout.FloatField("Perlin Scale", _PerlinScale);
-        //var renderer = EditorGUILayout.ObjectField("Cell size", renderer, typeof(VoxelRenderer));
-    
-        if(GUILayout.Button("Smooth Mesh with Marching Cubes"))
-        {
-            if(!Application.isPlaying)
-            {
-                vertices = new List<Vector3>();
-                tris = new List<Vector3>();
-                GenerateMeshFunction();
-            }
-            else
-            {
-                
-            }
-        }
-    }*/
 
-    public void Render(VoxelData data)
+    public void Render(VoxelData data, Vector3 offset)
     {
         vertices = new List<Vector3>();
         tris = new List<Vector3>();
-        GenerateMeshInput(data);
+        GenerateMeshInput(data, offset);
     }
 
     private void Start() {
-        /*var data = new VoxelData(size, origin);
-		foreach(Vector2 wormSetting in wormSettings)
-		{
-			Debug.Log("Worming...");
-			var worm = new PerlinWorm((int)wormSetting.x, (int)wormSetting.y);
-			worm.Wormify(data, new Vector3(data.dataWidth / 2, data.dataHeight / 2, data.dataDepth / 2));
-		}
-        Render(data);*/
+
     }
     void Awake() {
-        var data = new VoxelData(size, origin);
-        //Debug.Log(data._size);
+        MakeChunk(size, Vector3.zero);
+        //MakeChunk(size, new Vector3(1f, 0, 0));
+        //MakeChunk(size, new Vector3(1f, 0, 1f));
+        //MakeChunk(size, new Vector3(0f, 0, 1f));
+    }
+
+    void MakeChunk(int chunkSize, Vector3 offset) {
+        var data = new VoxelData(chunkSize, chunkSize/2 * Vector3.one, offset);
+        //var data = new VoxelData(chunkSize, chunkSize/2 * Vector3.one, offset);
+        _Start = Vector3.zero;
         _End = data._size * Vector3.one;
         _Diff = _End - _Start;
         //_CellSize =1.0f;
-        _XCount = Mathf.Abs((int) (_Diff.x / _CellSize));
-        _YCount = Mathf.Abs((int) (_Diff.y / _CellSize));
-        _ZCount = Mathf.Abs((int) (_Diff.z / _CellSize));
+        _XCount = data.dataWidth;
+        _YCount = data.dataHeight;
+        _ZCount = data.dataDepth;
         //var renderer = EditorGUILayout.ObjectField("Cell size", renderer, typeof(VoxelRenderer));
         
 		foreach(Vector2 wormSetting in wormSettings)
 		{
 			Debug.Log("Worming...");
 			var worm = new PerlinWorm((int)wormSetting.x, (int)wormSetting.y);
-			worm.Wormify(data, new Vector3(data.dataWidth / 2, data.dataHeight / 2, data.dataDepth / 2));
+            Debug.Log("Worm center: " + new Vector3(data.dataWidth / 2, data.dataHeight / 2, data.dataDepth / 2));
+			worm.Wormify(data, new Vector3(data.dataWidth / 2, data.dataHeight / 2, data.dataDepth / 2), offset * size);
 		}
-        Render(data);
+
+        Render(data, (offset*size));
     }
 
     Vector3[] offsets = {
@@ -401,74 +377,96 @@ public class SmoothMeshRenderer : MonoBehaviour
     public float _IsoLevel = 0f;
     public float _PerlinScale = .3f;
 
-    void GenerateMeshInput(VoxelData data)
+    const int MAX_VERTS = 65534;
+
+    void GenerateMeshInput(VoxelData data, Vector3 offset)
     {
-        vertices.Clear();
-        tris.Clear();
         float[] TopGrid = new float[_XCount * _YCount];
         float[] BottomGrid = new float[_XCount * _YCount];
         FillGrid(TopGrid, (int)_Start.z, data);
-        for(int z = (int)_Start.z + 1; z< _Start.z +_ZCount - 1; z++)
+        int z = 1;
+        while(z < _ZCount)
         {
-            FillGrid(BottomGrid, z, data);
-            PolygonizeGrids(TopGrid, BottomGrid, z);
-            var temp = TopGrid;
-            TopGrid = BottomGrid;
-            BottomGrid = temp;
-        }
+            vertices.Clear();
+            tris.Clear();
+            int vertexCount = 0;
+            while(z< _ZCount && vertexCount < MAX_VERTS - 12)//max verts minus the most verts that could be returned
+            {
+                FillGrid(BottomGrid, z, data);
+                vertexCount += PolygonizeGrids(TopGrid, BottomGrid, z);
+                var temp = TopGrid;
+                TopGrid = BottomGrid;
+                BottomGrid = temp;
+                z++;
+            }
+            if(z< _ZCount)
+            {
+                Debug.LogWarning("Exceeded Max Vert Count, splitting mesh");
+            }
+            //Debug.Log("Indices visited: " + TopGrid.Length * _ZCount);
+            int numMeshes = (vertices.Count / MAX_VERTS) + 1;
+            Debug.Log("Verts: " + vertices.Count);
+            Debug.Log("Tris: " + tris.Count);
+            Debug.Log("Ratio: " + ((float)vertices.Count)/tris.Count);
+            Debug.Log(numMeshes);
+            generatedMesh = new Mesh();
+            Vector3[] genVerts = new Vector3[vertices.Count];
+            Vector3[] meshNormals = new Vector3[vertices.Count];
+            Color[] meshColors = new Color[vertices.Count];
+            for(int i = 0; i < genVerts.Length; i++)
+            {
+                genVerts[i] = vertices[i] + offset;
+                Vector3 vertValue = (vertices[i] + offset).normalized;
+                meshColors[i] = new Color(vertValue.x, vertValue.y, vertValue.z);
+                //meshColors[i] = Color.black;
+            }
+            /*for(int i = vertices.Count; i< 2 * vertices.Count; i++)
+            {
+                genVerts[i] = vertices[i - vertices.Count] + offset;
+                Vector3 vertValue = (vertices[i - vertices.Count] + offset).normalized;
+                meshColors[i] = new Color(vertValue.x, vertValue.y, vertValue.z);
+            }*/
+            generatedMesh.vertices = genVerts;
+            int[] triIndices = new int[tris.Count * 3];
 
-        generatedMesh = new Mesh();
-        Vector3[] genVerts = new Vector3[vertices.Count * 2];
-        Vector3[] meshNormals = new Vector3[vertices.Count * 2];
-        for(int i =0; i<vertices.Count; i++)
-        {
-            genVerts[i] = vertices[i];
-        }
-        for(int i = vertices.Count; i< 2 * vertices.Count; i++)
-        {
-            genVerts[i] = vertices[i - vertices.Count];
-        }
-        generatedMesh.vertices = genVerts;
-        int[] triIndices = new int[tris.Count * 6];
+            for(int i = 0; i<(triIndices.Length/3) - 2; i++) //forwards triangles
+            {
+                triIndices[(i * 3)] =(int) tris[i].z;
+                triIndices[(i * 3) + 1] =(int) tris[i].y;
+                triIndices[(i * 3) + 2] =(int) tris[i].x;
+                Vector3 cross = Vector3.Cross(genVerts[triIndices[(i * 3) + 1]] - genVerts[triIndices[(i * 3)]], genVerts[triIndices[(i * 3) + 2]] - genVerts[triIndices[(i * 3)]]);
+                meshNormals[triIndices[(i * 3)]] += cross;
+                meshNormals[triIndices[(i * 3) + 1]] += cross;
+                meshNormals[triIndices[(i * 3) + 2]] += cross;
+            }
 
-        for(int i =0; i<tris.Count/2; i++) //forwards triangles
-        {
-            triIndices[(i * 3)] =(int) tris[i].z;
-            triIndices[(i * 3) + 1] =(int) tris[i].y;
-            triIndices[(i * 3) + 2] =(int) tris[i].x;
-            Vector3 cross = Vector3.Cross(genVerts[triIndices[(i * 3) + 1]] - genVerts[triIndices[(i * 3)]], genVerts[triIndices[(i * 3) + 2]] - genVerts[triIndices[(i * 3)]]);
-            meshNormals[triIndices[(i * 3)]] += cross;
-            meshNormals[triIndices[(i * 3) + 1]] += cross;
-            meshNormals[triIndices[(i * 3) + 2]] += cross;
+            /*for(int i =tris.Count/2; i<tris.Count; i++) //backfaces
+            {
+                triIndices[(i * 3)] =(int) tris[i - tris.Count/2].x;
+                triIndices[(i * 3) + 1] =(int) tris[i - tris.Count/2].y;
+                triIndices[(i * 3) + 2] =(int) tris[i - tris.Count/2].z;
+                Vector3 cross = Vector3.Cross(genVerts[triIndices[(i * 3) + 1]] - genVerts[triIndices[(i * 3)]], genVerts[triIndices[(i * 3) + 2]] - genVerts[triIndices[(i * 3)]]);
+                meshNormals[triIndices[(i * 3) + tris.Count/2]] += cross;
+                meshNormals[triIndices[(i * 3) + 1 + tris.Count/2]] += cross;
+                meshNormals[triIndices[(i * 3) + 2 + tris.Count/2]] += cross;
+            }*/
+            //Debug.Log(vertices.Count);
+            for(int i = 0; i<meshNormals.Length; i++)
+            {
+                meshNormals[i] = Vector3.Normalize(meshNormals[i]);
+            }
+            generatedMesh.triangles = triIndices;
+            generatedMesh.normals = meshNormals;
+            generatedMesh.colors = meshColors;
+            
+            GameObject thisChunk = new GameObject("Mesh");
+            thisChunk.AddComponent(typeof(MeshFilter));
+            thisChunk.AddComponent(typeof(MeshRenderer));
+            thisChunk.GetComponent<MeshFilter>().mesh = generatedMesh;
+            thisChunk.GetComponent<MeshRenderer>().material = materialToUse;
         }
-
-        for(int i =tris.Count/2; i<tris.Count; i++) //backfaces??
-        {
-            triIndices[(i * 3)] =(int) tris[i - tris.Count/2].x;
-            triIndices[(i * 3) + 1] =(int) tris[i - tris.Count/2].y;
-            triIndices[(i * 3) + 2] =(int) tris[i - tris.Count/2].z;
-            Vector3 cross = Vector3.Cross(genVerts[triIndices[(i * 3) + 1]] - genVerts[triIndices[(i * 3)]], genVerts[triIndices[(i * 3) + 2]] - genVerts[triIndices[(i * 3)]]);
-            meshNormals[triIndices[(i * 3) + tris.Count/2]] += cross;
-            meshNormals[triIndices[(i * 3) + 1 + tris.Count/2]] += cross;
-            meshNormals[triIndices[(i * 3) + 2 + tris.Count/2]] += cross;
-        }
-        //Debug.Log("Tris: " +tris.Count);
-        //Debug.Log("Mesh: " +meshNormals.Length);
         vertices.Clear();
         tris.Clear();
-        for(int i = 0; i<meshNormals.Length; i++)
-        {
-            meshNormals[i] = Vector3.Normalize(meshNormals[i]);
-            if(meshNormals[i] == Vector3.zero)
-            {
-                //Debug.LogError("Zero Normal");
-            }
-        }
-        generatedMesh.triangles = triIndices;
-        generatedMesh.normals = meshNormals;
-        Debug.Log(vertices.Count);
-        AssetDatabase.CreateAsset( generatedMesh, "Assets/genMesh.asset" );
-        AssetDatabase.SaveAssets();
     }
 
     Vector3 CalcNormal(Vector3 position, int index)
@@ -589,7 +587,7 @@ public class SmoothMeshRenderer : MonoBehaviour
     }
 
 
-    bool PushPolygons(GridData g){
+    int PushPolygons(GridData g){
 	    int NewVertexCount = vertices.Count;
         int IndexShift = vertices.Count;
         List<Vector3> vertStorage = new List<Vector3>();
@@ -610,9 +608,9 @@ public class SmoothMeshRenderer : MonoBehaviour
 		    {
 			    vertices.Add(vertStorage[VertexIndex]);
 		    }
-		    return true;
+		    return NewVertexCount;
 	    }
-	    return false;
+	    return 0;
     }
 
     Vector3 VertexInterp(float isoLevel, Vector3 p1, Vector3 p2, float valp1, float valp2)
@@ -640,33 +638,20 @@ public class SmoothMeshRenderer : MonoBehaviour
   
     void FillGrid(float[] Grid, int z, VoxelData data)
     {
-        for (int x = (int)_Start.x; x< _XCount + _Start.x; x++)
+        for (int x = 0; x< _XCount; x++)
         {
-            for(int y = (int)_Start.y; y< _YCount + _Start.y; y++)
+            for(int y = 0; y< _YCount; y++)
             {
-                Vector3 Pos = new Vector3(_Start.x + _CellSize * x, _Start.y + _CellSize * y, _Start.z + _CellSize * (z));
-                Grid[(int)(x-_Start.x) * _YCount + (int)(y - _Start.y)] =   data.GetCell((int)Pos.x, (int)Pos.y, (int)Pos.z);
-                //Debug.Log(Grid[(int)(x-_Start.x) * _YCount + (int)(y - _Start.y)]);
+                Vector3 Pos = new Vector3(_Start.x + (_CellSize * x), _Start.y + (_CellSize * y), _Start.z + (_CellSize * (z)));
+                //Debug.Log("Get Cell: " + new Vector3((int)(Pos.x + data._size/2), (int)(Pos.y + data._size/2), (int)(Pos.z + data._size/2)));
+                Grid[(int)(x-_Start.x) * _YCount + (int)(y - _Start.y)] =   data.GetCell((int)(Pos.x), (int)(Pos.y), (int)(Pos.z));
             }
         }
     }
-
-    float SphereFunction(Vector3 Pos)
-    {
-        return Pos.x * Pos.x + Pos.y * Pos.y + Pos.z * Pos.z - 1.0f;
-    }
-
-    float CrazyFunction(Vector3 Pos){
-        Vector3 P = Pos * 3.0f;
-        return Mathf.Sin(P.x * P.y + P.x * P.z + P.y * P.z) + Mathf.Sin(P.x * P.y) + Mathf.Sin(P.y * P.z) + Mathf.Sin(P.x * P.z) - 1.0f;//Pos.x * Pos.x + Pos.y * Pos.y + Pos.z * Pos.z - 1.0f;
-    }
-
-    float TestFunction(Vector3 Pos) {
-        return 2.5f - Mathf.Sqrt(Pos.x*Pos.x + Pos.y*Pos.y);
-    }
     
-    void PolygonizeGrids(float[] TopVals, float[] BottomVals, int z)
+    int PolygonizeGrids(float[] TopVals, float[] BottomVals, int z)
     {
+        int newVertices = 0;
         for(int x = 0; x < _XCount - 1; x++)
         {
 		    for(int y = 0; y < _YCount - 1; y++)
@@ -704,54 +689,14 @@ public class SmoothMeshRenderer : MonoBehaviour
 			    }
 			    if(Valid)
 			    {
-				    PushPolygons(g);
+				    newVertices += PushPolygons(g);
 			    }
 		    }
         }
+        return newVertices;
     } 
 
     #region 3D Noise
-    private static Vector3[] gradients3D = {
-		new Vector3( 1f, 1f, 0f),
-		new Vector3(-1f, 1f, 0f),
-		new Vector3( 1f,-1f, 0f),
-		new Vector3(-1f,-1f, 0f),
-		new Vector3( 1f, 0f, 1f),
-		new Vector3(-1f, 0f, 1f),
-		new Vector3( 1f, 0f,-1f),
-		new Vector3(-1f, 0f,-1f),
-		new Vector3( 0f, 1f, 1f),
-		new Vector3( 0f,-1f, 1f),
-		new Vector3( 0f, 1f,-1f),
-		new Vector3( 0f,-1f,-1f),
-		
-		new Vector3( 1f, 1f, 0f),
-		new Vector3(-1f, 1f, 0f),
-		new Vector3( 0f,-1f, 1f),
-		new Vector3( 0f,-1f,-1f)
-	};
-
-    private const int hashMask = 255;
-    private const int gradientsMask3D = 15;
-
-    private static int[] hash = {
-		151,160,137, 91, 90, 15,131, 13,201, 95, 96, 53,194,233,  7,225,
-		140, 36,103, 30, 69,142,  8, 99, 37,240, 21, 10, 23,190,  6,148,
-		247,120,234, 75,  0, 26,197, 62, 94,252,219,203,117, 35, 11, 32,
-		 57,177, 33, 88,237,149, 56, 87,174, 20,125,136,171,168, 68,175,
-		 74,165, 71,134,139, 48, 27,166, 77,146,158,231, 83,111,229,122,
-		 60,211,133,230,220,105, 92, 41, 55, 46,245, 40,244,102,143, 54,
-		 65, 25, 63,161,  1,216, 80, 73,209, 76,132,187,208, 89, 18,169,
-		200,196,135,130,116,188,159, 86,164,100,109,198,173,186,  3, 64,
-		 52,217,226,250,124,123,  5,202, 38,147,118,126,255, 82, 85,212,
-		207,206, 59,227, 47, 16, 58, 17,182,189, 28, 42,223,183,170,213,
-		119,248,152,  2, 44,154,163, 70,221,153,101,155,167, 43,172,  9,
-		129, 22, 39,253, 19, 98,108,110, 79,113,224,232,178,185,112,104,
-		218,246, 97,228,251, 34,242,193,238,210,144, 12,191,179,162,241,
-		 81, 51,145,235,249, 14,239,107, 49,192,214, 31,181,199,106,157,
-		184, 84,204,176,115,121, 50, 45,127,  4,150,254,138,236,205, 93,
-		222,114, 67, 29, 24, 72,243,141,128,195, 78, 66,215, 61,156,180
-	};
     //Everything in the 3D noise functions taken from https://github.com/keijiro/PerlinNoise/blob/master/Assets/Perlin.cs
     public static float Noise(float x, float y, float z)
     {
@@ -775,14 +720,6 @@ public class SmoothMeshRenderer : MonoBehaviour
                        Lerp(v, Lerp(u, Grad(perm[AA+1], x, y  , z-1), Grad(perm[BA+1], x-1, y  , z-1)),
                                Lerp(u, Grad(perm[AB+1], x, y-1, z-1), Grad(perm[BB+1], x-1, y-1, z-1))));
     }
-
-    private static float Dot (Vector3 g, float x, float y, float z) {
-		return g.x * x + g.y * y + g.z * z;
-	}
-
-    private static float Smooth (float t) {
-		return t * t * t * (t * (t * 6f - 15f) + 10f);
-	}
 
     static float Fade(float t)
     {
@@ -818,24 +755,5 @@ public class SmoothMeshRenderer : MonoBehaviour
         return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);
     }
 
-    #endregion
-
-    #region alt 3D noise
-    public static float PerlinNoise3D(float x, float y, float z)
-    {
-        y += 1;
-        z += 2;
-        float xy = _perlin3DFixed(x, y);
-        float xz = _perlin3DFixed(x, z);
-        float yz = _perlin3DFixed(y, z);
-        float yx = _perlin3DFixed(y, x);
-        float zx = _perlin3DFixed(z, x);
-        float zy = _perlin3DFixed(z, y);
-        return xy * xz * yz * yx * zx * zy;
-    }
-    static float _perlin3DFixed(float a, float b)
-    {
-        return Mathf.Sin(Mathf.PI * Mathf.PerlinNoise(a, b));
-    }
     #endregion
 }

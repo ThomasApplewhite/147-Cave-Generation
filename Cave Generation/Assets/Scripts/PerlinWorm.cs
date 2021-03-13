@@ -43,7 +43,7 @@ public class PerlinWorm
         this.wormYaw = z;
     }
 
-    public void Wormify(VoxelData voxelMap, Vector3 pos, int time=0)
+    public void Wormify(VoxelData voxelMap, Vector3 pos, Vector3 offset, int time=0)
     {
         //Step 1: Clear where we currently are.
         //RadialClear(voxelMap, clearRange, pos);
@@ -53,13 +53,13 @@ public class PerlinWorm
         if(time < duration)
         {
             //Step 3: Adjust Pitch and Yaw with their noise values
-            /*var newRoll = wormRoll + RollNoise(pos);
-            var newPitch = wormPitch + PitchNoise(pos);
-            var newYaw = wormYaw + YawNoise(pos);*/
+            /*var newRoll = wormRoll + ((RollNoise(pos) * 270f) - 135f);
+            var newPitch = wormPitch + ((PitchNoise(pos)* 270f) - 135f);
+            var newYaw = wormYaw + ((YawNoise(pos)* 270f) - 135f);*/
 
-            var newRoll = wormRoll + TrueRandom(pos);
-            var newPitch = wormPitch + TrueRandom(pos);
-            var newYaw = wormYaw + TrueRandom(pos);
+            var newRoll = wormRoll + TrueRandom(pos + offset);
+            var newPitch = wormPitch + TrueRandom(pos + offset);
+            var newYaw = wormYaw + TrueRandom(pos + offset);
 
             wormRoll = newRoll;
             wormPitch = newPitch;
@@ -70,6 +70,7 @@ public class PerlinWorm
             wormPitch = Mathf.Abs(newPitch) <= wormPitchMax ? newPitch : wormPitch;
             wormYaw = Mathf.Abs(newYaw) <= wormYawMax ? newYaw : wormYaw;*/
             Debug.Log($"Rotation is Roll: {wormRoll} Pitch: {wormPitch} Yaw: {wormYaw}");
+            Debug.Log($"Position is: {pos} Voxel bounds are: {voxelMap.dataHeight} around origin");
 
             //Step 4: Calculate a new position based on the new Yaw and Pitch that is "1" away i.e. normal
             internalForward = new Vector3(wormRoll, wormPitch, wormYaw).normalized;// * this.clearRange;
@@ -80,16 +81,23 @@ public class PerlinWorm
             to the new pos, which is a vector3 representation of position.
             Luckily for us, Vector Addition is a defined operator in Unity.*/
             var newPos = pos + internalForward;
-
-            //visualize with debugging ray
-            Debug.DrawRay(pos, internalForward, Color.white, 100.0f, false);
+            if(newPos.x > voxelMap.dataWidth || newPos.y > voxelMap.dataHeight || newPos.z > voxelMap.dataDepth|| newPos.x < 0 || newPos.y < 0 || newPos.z < 0)
+            {
+                Debug.LogError("Worm is out of bounds of voxel data");
+                Debug.DrawRay(pos + offset, internalForward, Color.red, 100.0f, false);
+            }
+            else
+            {
+                //visualize with debugging ray
+                Debug.DrawRay(pos + offset, internalForward, Color.white, 100.0f, false);
+            }
 
             //Step 4.5: If the worm would go out-of-bounds, normalize it back in
             newPos = newPos.magnitude > voxelMap.dataWidth ? newPos 
                 : newPos.normalized * (newPos.magnitude % voxelMap.dataWidth);
 
             //Step 5: Re[B]ursion: Repeat clearing step
-            Wormify(voxelMap, newPos, time + 1);
+            Wormify(voxelMap, newPos, offset, time + 1);
         }
         
     }
@@ -165,12 +173,12 @@ public class PerlinWorm
 
     float YawNoise(Vector3 v)
     {
-        return PerlinNoise2D(v.x, v.y);
+        return PerlinNoise2D(v.y, v.x);
     }
 
     float RollNoise(Vector3 v)
     {
-        return PerlinNoise2D(v.y, v.z);
+        return PerlinNoise2D(v.z, v.y);
     }
 
     float TrueRandom(Vector3 v)
@@ -244,57 +252,6 @@ public class PerlinWorm
                                Lerp(u, Grad(perm[AB  ], x, y-1, z  ), Grad(perm[BB  ], x-1, y-1, z  ))),
                        Lerp(v, Lerp(u, Grad(perm[AA+1], x, y  , z-1), Grad(perm[BA+1], x-1, y  , z-1)),
                                Lerp(u, Grad(perm[AB+1], x, y-1, z-1), Grad(perm[BB+1], x-1, y-1, z-1))));
-        //point *= frequency;
-        /*Vector3 point = new Vector3(x, y, z);
-        float mag = point.magnitude;
-        point = point/mag;
-		int ix0 = Mathf.FloorToInt(point.x);
-		int iy0 = Mathf.FloorToInt(point.y);
-		int iz0 = Mathf.FloorToInt(point.z);
-		float tx0 = point.x - ix0;
-		float ty0 = point.y - iy0;
-		float tz0 = point.z - iz0;
-		float tx1 = tx0 - 1f;
-		float ty1 = ty0 - 1f;
-		float tz1 = tz0 - 1f;
-		ix0 &= hashMask;
-		iy0 &= hashMask;
-		iz0 &= hashMask;
-		int ix1 = ix0 + 1;
-		int iy1 = iy0 + 1;
-		int iz1 = iz0 + 1;
-		
-		int h0 = hash[ix0];
-		int h1 = hash[ix1];
-		int h00 = hash[h0 + iy0];
-		int h10 = hash[h1 + iy0];
-		int h01 = hash[h0 + iy1];
-		int h11 = hash[h1 + iy1];
-		Vector3 g000 = gradients3D[hash[h00 + iz0] & gradientsMask3D];
-		Vector3 g100 = gradients3D[hash[h10 + iz0] & gradientsMask3D];
-		Vector3 g010 = gradients3D[hash[h01 + iz0] & gradientsMask3D];
-		Vector3 g110 = gradients3D[hash[h11 + iz0] & gradientsMask3D];
-		Vector3 g001 = gradients3D[hash[h00 + iz1] & gradientsMask3D];
-		Vector3 g101 = gradients3D[hash[h10 + iz1] & gradientsMask3D];
-		Vector3 g011 = gradients3D[hash[h01 + iz1] & gradientsMask3D];
-		Vector3 g111 = gradients3D[hash[h11 + iz1] & gradientsMask3D];
-
-		float v000 = Dot(g000, tx0, ty0, tz0);
-		float v100 = Dot(g100, tx1, ty0, tz0);
-		float v010 = Dot(g010, tx0, ty1, tz0);
-		float v110 = Dot(g110, tx1, ty1, tz0);
-		float v001 = Dot(g001, tx0, ty0, tz1);
-		float v101 = Dot(g101, tx1, ty0, tz1);
-		float v011 = Dot(g011, tx0, ty1, tz1);
-		float v111 = Dot(g111, tx1, ty1, tz1);
-
-		float tx = Smooth(tx0);
-		float ty = Smooth(ty0);
-		float tz = Smooth(tz0);
-		return mag*Mathf.Lerp(
-			Mathf.Lerp(Mathf.Lerp(v000, v100, tx), Mathf.Lerp(v010, v110, tx), ty),
-			Mathf.Lerp(Mathf.Lerp(v001, v101, tx), Mathf.Lerp(v011, v111, tx), ty),
-			tz);*/
     }
 
     public static float PerlinNoise2D(float x, float y)
