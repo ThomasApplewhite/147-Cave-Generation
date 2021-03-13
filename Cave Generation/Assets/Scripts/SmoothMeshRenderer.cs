@@ -313,25 +313,30 @@ public class SmoothMeshRenderer : MonoBehaviour
 
 #endregion
 
-
-    public void Render(VoxelData data, Vector3 offset)
+    public struct ChunkData 
+    {
+        public List<Mesh> chunkMesh;
+        public Material chunkMaterial;
+        public bool generateColliders;
+    }
+    ChunkData Render(VoxelData data, Vector3 offset)
     {
         vertices = new List<Vector3>();
         tris = new List<Vector3>();
-        GenerateMeshInput(data, offset);
+        return GenerateMeshInput(data, offset);
     }
 
     private void Start() {
 
     }
-    void Awake() {
+    /*void Awake() {
         MakeChunk(size, Vector3.zero, 0);
         MakeChunk(size, new Vector3(1f, 0, 0), 1);
         MakeChunk(size, new Vector3(1f, 0, 1f), 2);
         MakeChunk(size, new Vector3(0f, 0, 1f), 3);
-    }
+    }*/
 
-    void MakeChunk(int chunkSize, Vector3 offset, int chunkIndex = 0) {
+    public List<Mesh> MakeChunk(int chunkSize, Vector3 offset, int chunkIndex = 0) {
         var data = new VoxelData(chunkSize, chunkSize/2 * Vector3.one, offset);
         //var data = new VoxelData(chunkSize, chunkSize/2 * Vector3.one, offset);
         _Start = Vector3.zero;
@@ -354,7 +359,7 @@ public class SmoothMeshRenderer : MonoBehaviour
             ctr ++;
 		}
 
-        Render(data, (offset*size));
+        return Render(data, (offset*size)).chunkMesh;
     }
 
     Vector3[] offsets = {
@@ -381,8 +386,10 @@ public class SmoothMeshRenderer : MonoBehaviour
 
     const int MAX_VERTS = 65534;
 
-    void GenerateMeshInput(VoxelData data, Vector3 offset)
+    ChunkData GenerateMeshInput(VoxelData data, Vector3 offset)
     {
+        ChunkData thisChunk = new ChunkData();
+        thisChunk.chunkMesh = new List<Mesh>();
         float[] TopGrid = new float[_XCount * _YCount];
         float[] BottomGrid = new float[_XCount * _YCount];
         FillGrid(TopGrid, (int)_Start.z, data);
@@ -461,16 +468,19 @@ public class SmoothMeshRenderer : MonoBehaviour
             generatedMesh.normals = meshNormals;
             generatedMesh.colors = meshColors;
             
-            GameObject thisChunk = new GameObject("Mesh");
+            /*GameObject thisChunk = new GameObject("Mesh");
             thisChunk.AddComponent(typeof(MeshFilter));
             thisChunk.AddComponent(typeof(MeshRenderer));
             thisChunk.GetComponent<MeshFilter>().mesh = generatedMesh;
-            thisChunk.GetComponent<MeshRenderer>().material = materialToUse;
-            MeshCollider meshc = thisChunk.AddComponent(typeof(MeshCollider)) as MeshCollider;
-            meshc.sharedMesh = generatedMesh; // Give it your mesh here.
+            thisChunk.GetComponent<MeshRenderer>().material = materialToUse;*/
+            //MeshCollider meshc = thisChunk.AddComponent(typeof(MeshCollider)) as MeshCollider;
+            //meshc.sharedMesh = generatedMesh; // Give it your mesh here.
+            thisChunk.chunkMesh.Add(generatedMesh);
+            thisChunk.chunkMaterial = materialToUse;
         }
         vertices.Clear();
         tris.Clear();
+        return thisChunk;
     }
 
     Vector3 CalcNormal(Vector3 position, int index)
