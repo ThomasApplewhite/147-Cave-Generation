@@ -32,15 +32,19 @@ public class PerlinWorm
     private Vector3 internalForward = new Vector3(0f, 0f, 0f);
 
     //private Vector3 realPosition = new Vector3(0, 0, 0);
-
+    System.Random rand;
     public PerlinWorm(int duration, int clearRange, float x=0, float y=0, float z=0)
     {
         this.duration = duration;
         this.clearRange = clearRange;
 
-        this.wormRoll = x;
-        this.wormPitch = y;
-        this.wormYaw = z;
+        rand = new System.Random((int)(x + y + z));
+        Debug.Log("PerlinWormsSeed: " + (int)(x + y + z));
+
+        this.wormRoll = (float)rand.NextDouble() * x;
+        this.wormPitch = (float)rand.NextDouble() * y;
+        this.wormYaw = (float)rand.NextDouble() * z;
+        Debug.Log($"Initializing new worm with roll: {wormRoll} pitch: {wormPitch} yaw: {wormYaw}");
     }
 
     public void Wormify(VoxelData voxelMap, Vector3 pos, Vector3 offset, int time=0)
@@ -48,29 +52,29 @@ public class PerlinWorm
         //Step 1: Clear where we currently are.
         //RadialClear(voxelMap, clearRange, pos);
         RadialAdd(voxelMap, clearRange, pos);
+        //var rand = new System.Random((int)(pos.x + pos.y + pos.z));
 
         //Step 2: Check if we've done enough clears. If not, contiune
         if(time < duration)
         {
+            //making sure we don't go over the maximum rotations...
+            /*wormRoll = Mathf.Abs(newRoll) <= wormRollMax ? newRoll : wormRoll;
+            wormPitch = Mathf.Abs(newPitch) <= wormPitchMax ? newPitch : wormPitch;
+            wormYaw = Mathf.Abs(newYaw) <= wormYawMax ? newYaw : wormYaw;*/
+            //Debug.Log($"Rotation is Roll: {wormRoll} Pitch: {wormPitch} Yaw: {wormYaw}");
+            //Debug.Log($"Position is: {pos} Voxel bounds are: {voxelMap.dataHeight} around origin");
             //Step 3: Adjust Pitch and Yaw with their noise values
             /*var newRoll = wormRoll + ((RollNoise(pos) * 270f) - 135f);
             var newPitch = wormPitch + ((PitchNoise(pos)* 270f) - 135f);
             var newYaw = wormYaw + ((YawNoise(pos)* 270f) - 135f);*/
 
-            var newRoll = wormRoll + TrueRandom(pos + offset);
-            var newPitch = wormPitch + TrueRandom(pos + offset);
-            var newYaw = wormYaw + TrueRandom(pos + offset);
+            var newRoll = wormRoll + (((float)rand.NextDouble() * 2) - 1); //this random function is going to make me SCREAM
+            var newPitch = wormPitch + (((float)rand.NextDouble() * 2) - 1);
+            var newYaw = wormYaw + (((float)rand.NextDouble() * 2) - 1);
 
             wormRoll = newRoll;
             wormPitch = newPitch;
             wormYaw = newYaw;
-            
-            //making sure we don't go over the maximum rotations...
-            /*wormRoll = Mathf.Abs(newRoll) <= wormRollMax ? newRoll : wormRoll;
-            wormPitch = Mathf.Abs(newPitch) <= wormPitchMax ? newPitch : wormPitch;
-            wormYaw = Mathf.Abs(newYaw) <= wormYawMax ? newYaw : wormYaw;*/
-            Debug.Log($"Rotation is Roll: {wormRoll} Pitch: {wormPitch} Yaw: {wormYaw}");
-            Debug.Log($"Position is: {pos} Voxel bounds are: {voxelMap.dataHeight} around origin");
 
             //Step 4: Calculate a new position based on the new Yaw and Pitch that is "1" away i.e. normal
             internalForward = new Vector3(wormRoll, wormPitch, wormYaw).normalized;// * this.clearRange;
@@ -104,7 +108,7 @@ public class PerlinWorm
 
     void RadialClear(VoxelData map, int range, Vector3 origin)
     {
-        Debug.Log("Clearing around " + origin);
+        //Debug.Log("Clearing around " + origin);
         var rangef = (float)range;
         //double check to make sure the 
         /*Not sure what I was thinking here, the basics is make sure that this loop doesn't
@@ -135,7 +139,7 @@ public class PerlinWorm
 
     void RadialAdd(VoxelData map, int range, Vector3 origin)
     {
-        Debug.Log("Adding around " + origin);
+        //Debug.Log("Adding around " + origin);
         var rangef = (float)range;
         //double check to make sure the 
         /*Not sure what I was thinking here, the basics is make sure that this loop doesn't
@@ -181,10 +185,25 @@ public class PerlinWorm
         return PerlinNoise2D(v.z, v.y);
     }
 
-    float TrueRandom(Vector3 v)
+    
+    float TrueRandom(Vector3 v, int seed)
     {
         var randomScale = 135f;
-        return UnityEngine.Random.Range(-randomScale, randomScale);
+        v = v / randomScale;
+        /*System.Random rand = new System.Random(seed);
+        return UnityEngine.Random.Range(-randomScale, randomScale);*/
+        //return ((float)rand.NextDouble() * randomScale * 2) - randomScale;
+        var AB = Mathf.PerlinNoise(v.x, v.y);
+        var BC = Mathf.PerlinNoise(v.y, v.z);
+        var AC = Mathf.PerlinNoise(v.x, v.z);
+
+        var BA = Mathf.PerlinNoise(v.y, v.x);
+        var CB = Mathf.PerlinNoise(v.z, v.y);
+        var CA = Mathf.PerlinNoise(v.z, v.x);
+
+        var ABC = AB + BC + AC + BA + CB + CA;
+        Debug.Log($"Perlin value for {v} is {(ABC/6f)}");
+        return (ABC/6f) * 360;
     }
 
     

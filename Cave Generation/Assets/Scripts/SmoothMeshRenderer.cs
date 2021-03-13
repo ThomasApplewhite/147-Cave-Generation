@@ -14,7 +14,6 @@ public class SmoothMeshRenderer : MonoBehaviour
 	public int size = 10;
 	public int generatedVoxelsPerTick = 100;
 	//public Vector3 origin = new Vector3(0, 0, 0);
-
 	float adjScale;
 
 	[Header("Worm Settings: X is length, Y is worm radius")]
@@ -326,13 +325,13 @@ public class SmoothMeshRenderer : MonoBehaviour
 
     }
     void Awake() {
-        MakeChunk(size, Vector3.zero);
-        //MakeChunk(size, new Vector3(1f, 0, 0));
-        //MakeChunk(size, new Vector3(1f, 0, 1f));
-        //MakeChunk(size, new Vector3(0f, 0, 1f));
+        MakeChunk(size, Vector3.zero, 0);
+        MakeChunk(size, new Vector3(1f, 0, 0), 1);
+        MakeChunk(size, new Vector3(1f, 0, 1f), 2);
+        MakeChunk(size, new Vector3(0f, 0, 1f), 3);
     }
 
-    void MakeChunk(int chunkSize, Vector3 offset) {
+    void MakeChunk(int chunkSize, Vector3 offset, int chunkIndex = 0) {
         var data = new VoxelData(chunkSize, chunkSize/2 * Vector3.one, offset);
         //var data = new VoxelData(chunkSize, chunkSize/2 * Vector3.one, offset);
         _Start = Vector3.zero;
@@ -343,13 +342,16 @@ public class SmoothMeshRenderer : MonoBehaviour
         _YCount = data.dataHeight;
         _ZCount = data.dataDepth;
         //var renderer = EditorGUILayout.ObjectField("Cell size", renderer, typeof(VoxelRenderer));
-        
+        int ctr = 0;
+        System.Random rand = new System.Random((int)(chunkSize * (offset.x + offset.y + offset.z) * chunkIndex));
+        Debug.Log("SmoothMesh Seed: " + (int)(chunkSize * (offset.x + offset.y + offset.z)));
 		foreach(Vector2 wormSetting in wormSettings)
 		{
 			Debug.Log("Worming...");
-			var worm = new PerlinWorm((int)wormSetting.x, (int)wormSetting.y);
+			var worm = new PerlinWorm((int)wormSetting.x, (int)wormSetting.y, (float)rand.NextDouble() + ctr, (float)rand.NextDouble() + ctr, (float)rand.NextDouble() + ctr);
             Debug.Log("Worm center: " + new Vector3(data.dataWidth / 2, data.dataHeight / 2, data.dataDepth / 2));
 			worm.Wormify(data, new Vector3(data.dataWidth / 2, data.dataHeight / 2, data.dataDepth / 2), offset * size);
+            ctr ++;
 		}
 
         Render(data, (offset*size));
@@ -464,6 +466,8 @@ public class SmoothMeshRenderer : MonoBehaviour
             thisChunk.AddComponent(typeof(MeshRenderer));
             thisChunk.GetComponent<MeshFilter>().mesh = generatedMesh;
             thisChunk.GetComponent<MeshRenderer>().material = materialToUse;
+            MeshCollider meshc = thisChunk.AddComponent(typeof(MeshCollider)) as MeshCollider;
+            meshc.sharedMesh = generatedMesh; // Give it your mesh here.
         }
         vertices.Clear();
         tris.Clear();
