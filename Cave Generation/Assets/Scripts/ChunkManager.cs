@@ -6,76 +6,20 @@ public class ChunkManager : MonoBehaviour
 {
     public Vector3Int numChunks = Vector3Int.one;
     public Material mat;
+    public int chunkSize = 100;
     public bool generateColliders = true;
+
+    [Header("Worm Settings: X is length, Y is worm radius")]
+	public List<Vector2> wormSettings;
     GameObject chunkHolder;
     const string chunkHolderName = "Chunks Holder";
     List<Chunk> chunks;
     Dictionary<Vector3Int, Chunk> existingChunks;
     Queue<Chunk> recycleableChunks;
-    public class Chunk : MonoBehaviour{
-        public Vector3Int coord;
 
-        [HideInInspector]
-        public Mesh mesh;
-        [HideInInspector]
-        public MeshFilter meshFilter;
-        MeshRenderer meshRenderer;
-        MeshCollider meshCollider;
-        bool generateCollider;
-
-        public void DestroyOrDisable () {
-            if (Application.isPlaying) {
-                mesh.Clear ();
-                gameObject.SetActive (false);
-            } else {
-                DestroyImmediate (gameObject, false);
-            }
-        }
-
-        // Add components/get references in case lost (references can be lost when working in the editor)
-        public void SetUp (Material mat, bool generateCollider) {
-            this.generateCollider = generateCollider;
-
-            meshFilter = GetComponent<MeshFilter> ();
-            meshRenderer = GetComponent<MeshRenderer> ();
-            meshCollider = GetComponent<MeshCollider> ();
-
-            if (meshFilter == null) {
-                meshFilter = gameObject.AddComponent<MeshFilter> ();
-            }
-
-            if (meshRenderer == null) {
-                meshRenderer = gameObject.AddComponent<MeshRenderer> ();
-            }
-
-            if (meshCollider == null && generateCollider) {
-                meshCollider = gameObject.AddComponent<MeshCollider> ();
-            }
-            if (meshCollider != null && !generateCollider) {
-                DestroyImmediate (meshCollider);
-            }
-
-            mesh = meshFilter.sharedMesh;
-            if (mesh == null) {
-                mesh = new Mesh ();
-                mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-                meshFilter.sharedMesh = mesh;
-            }
-
-            if (generateCollider) {
-                if (meshCollider.sharedMesh == null) {
-                    meshCollider.sharedMesh = mesh;
-                }
-                // force update
-                meshCollider.enabled = false;
-                meshCollider.enabled = true;
-            }
-
-            meshRenderer.material = mat;
-        }
-    }
     void Start() {
         meshGenerator = FindObjectOfType<SmoothMeshRenderer>();
+        existingChunks = new Dictionary<Vector3Int, Chunk>();
         InitChunks ();
         UpdateAllChunks ();
     }
@@ -115,11 +59,14 @@ public class ChunkManager : MonoBehaviour
                     }
 
                     // Create new chunk
+                    VoxelData data = null;
                     if (!chunkAlreadyExists) {
                         var newChunk = CreateChunk (coord);
                         chunks.Add (newChunk);
+                        data = new VoxelData(chunkSize, chunkSize/2 * Vector3.one, coord);
+                        newChunk.data = data;
+                        existingChunks.Add(coord, newChunk);
                     }
-
                     chunks[chunks.Count - 1].SetUp(mat, generateColliders);
                 }
             }
@@ -128,6 +75,18 @@ public class ChunkManager : MonoBehaviour
         // Delete all unused chunks
         for (int i = 0; i < oldChunks.Count; i++) {
             oldChunks[i].DestroyOrDisable ();
+        }
+        foreach(Chunk c in chunks)
+        {
+            foreach(Vector2 wormSetting in wormSettings)
+		    {
+			    //Debug.Log("Worming...");
+                //Debug.Log("Coord: " + c.coord);
+			    var worm = new PerlinWorm((int)wormSetting.x, (int)wormSetting.y, new Vector3((c.data.dataWidth / 2) + c.coord.x, (c.data.dataHeight / 2) + c.coord.y, (c.data.dataDepth / 2) + c.coord.z),
+                             Mathf.Sin(wormSetting.x), Mathf.Cos(wormSetting.y), Mathf.Tan(wormSetting.x + wormSetting.y));
+                //Debug.Log("Worm center: " + new Vector3(chunkSize / 2, chunkSize / 2, chunkSize / 2));
+			    worm.Wormify(existingChunks, c.coord, new Vector3(chunkSize / 2, chunkSize / 2, chunkSize / 2), c.coord * chunkSize);
+		    }
         }
     }
 
@@ -150,8 +109,21 @@ public class ChunkManager : MonoBehaviour
 
     void UpdateChunkMesh(Chunk chunk)
     {
-        List<Mesh> d = meshGenerator.MakeChunk(100, chunk.coord);
-        chunk.mesh = d[0];
-        chunk.meshFilter.mesh = chunk.mesh;
+        List<Mesh> d = meshGenerator.MakeChunk(existingChunks, chunk.coord, 100, chunk.coord);
+        Mesh[] submeshes = new Mesh[d.Count];
+        int index = 0;
+        foreach(Mesh m in d)
+        {
+            submeshes[index] = m;
+            GameObject chunkSub = new GameObject("Submesh " + index);
+            MeshFilter mFilt = chunkSub.AddComponent<MeshFilter>();
+            MeshRenderer mRend = chunkSub.AddComponent<MeshRenderer>();
+            mFilt.sharedMesh = m;
+            mRend.material = mat;
+            chunkSub.transform.parent = chunk.transform;
+            index++;
+        }
+        chunk.mesh = submeshes;
+        //chunk.meshFilter.mesh = chunk.mesh;
     }
 }

@@ -32,7 +32,7 @@ public class VoxelData
             //var initializer = new Func<Vector3, float>((Vector3 vec) => AllZeros(vec));
             var initializer = new Func<Vector3, float>((Vector3 vec) => InitValues(vec));
         
-            Initialize(dataArray, originPosition, initializer, offset);
+            Initialize(dataArray, originPosition, initializer, offset * size);
         }
     }
 

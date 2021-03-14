@@ -46,11 +46,11 @@ public class PerlinWorm
         this.wormYaw = PerlinNoise2D(x + origin.x, z + origin.z);
     }
 
-    public void Wormify(VoxelData voxelMap, Vector3 pos, Vector3 offset, int time=0)
+    public void Wormify(Dictionary<Vector3Int, Chunk> world, Vector3Int currChunkCoord, Vector3 pos, Vector3 offset, int time=0)
     {
         //Step 1: Clear where we currently are.
         //RadialClear(voxelMap, clearRange, pos);
-        RadialAdd(voxelMap, clearRange, pos);
+        RadialAdd(world[currChunkCoord].data, clearRange, pos);
         //var rand = new System.Random((int)(pos.x + pos.y + pos.z));
 
         //Step 2: Check if we've done enough clears. If not, contiune
@@ -83,24 +83,62 @@ public class PerlinWorm
             (treating it as a vector from origin to pos) to the forward vector to create a vector from origin
             to the new pos, which is a vector3 representation of position.
             Luckily for us, Vector Addition is a defined operator in Unity.*/
+            VoxelData voxelMap = world[currChunkCoord].data;
+            Debug.DrawRay(pos + offset, internalForward, Color.black, 100.0f, false);
             var newPos = pos + internalForward;
             if(newPos.x > voxelMap.dataWidth || newPos.y > voxelMap.dataHeight || newPos.z > voxelMap.dataDepth|| newPos.x < 0 || newPos.y < 0 || newPos.z < 0)
             {
                 Debug.LogError("Worm is out of bounds of voxel data");
-                Debug.DrawRay(pos + offset, internalForward, Color.red, 100.0f, false);
+                if(newPos.x > voxelMap.dataWidth)
+                {
+                    currChunkCoord.x += 1;
+                    newPos.x = newPos.x - voxelMap.dataWidth;
+                }
+                else if(newPos.x < 0)
+                {
+                    currChunkCoord.x -= 1;
+                    newPos.x = voxelMap.dataWidth + newPos.x;
+                }
+
+                if(newPos.y > voxelMap.dataHeight)
+                {
+                    currChunkCoord.y += 1;
+                    newPos.y = newPos.y - voxelMap.dataHeight;
+                }
+                else if(newPos.y < 0)
+                {
+                    currChunkCoord.y -= 1;
+                    newPos.y = voxelMap.dataHeight + newPos.y;
+                }
+
+                if(newPos.z > voxelMap.dataDepth)
+                {
+                    currChunkCoord.z += 1;
+                    newPos.z = newPos.z - voxelMap.dataDepth;
+                }
+                else if(newPos.z < 0)
+                {
+                    currChunkCoord.z -= 1;
+                    newPos.z = voxelMap.dataDepth + newPos.z;
+                }
+                
+            }
+
+
+            //Step 4.5: If the worm would go out-of-bounds, normalize it back in
+            //newPos = newPos.magnitude > voxelMap.dataWidth ? newPos 
+            //    : newPos.normalized * (newPos.magnitude % voxelMap.dataWidth);
+
+            //Step 5: Re[B]ursion: Repeat clearing step
+            if(world.ContainsKey(currChunkCoord))
+            {
+                Wormify(world, currChunkCoord, newPos, offset, time + 1);
             }
             else
             {
-                //visualize with debugging ray
-                Debug.DrawRay(pos + offset, internalForward, Color.white, 100.0f, false);
+                return;
             }
 
-            //Step 4.5: If the worm would go out-of-bounds, normalize it back in
-            newPos = newPos.magnitude > voxelMap.dataWidth ? newPos 
-                : newPos.normalized * (newPos.magnitude % voxelMap.dataWidth);
-
-            //Step 5: Re[B]ursion: Repeat clearing step
-            Wormify(voxelMap, newPos, offset, time + 1);
         }
         
     }

@@ -9,15 +9,8 @@ public class SmoothMeshRenderer : MonoBehaviour
 {
     public Material materialToUse;
     Mesh generatedMesh;
-    public float scale = 1f;
 
-	public int size = 10;
 	public int generatedVoxelsPerTick = 100;
-	//public Vector3 origin = new Vector3(0, 0, 0);
-	float adjScale;
-
-	[Header("Worm Settings: X is length, Y is worm radius")]
-	public List<Vector2> wormSettings;
     
     #region Lookup tables
     int[] edgeTable={
@@ -319,47 +312,35 @@ public class SmoothMeshRenderer : MonoBehaviour
         public Material chunkMaterial;
         public bool generateColliders;
     }
-    ChunkData Render(VoxelData data, Vector3 offset)
-    {
-        vertices = new List<Vector3>();
-        tris = new List<Vector3>();
-        return GenerateMeshInput(data, offset);
-    }
 
     private void Start() {
 
     }
-    /*void Awake() {
-        MakeChunk(size, Vector3.zero, 0);
-        MakeChunk(size, new Vector3(1f, 0, 0), 1);
-        MakeChunk(size, new Vector3(1f, 0, 1f), 2);
-        MakeChunk(size, new Vector3(0f, 0, 1f), 3);
-    }*/
 
-    public List<Mesh> MakeChunk(int chunkSize, Vector3 offset, int chunkIndex = 0) {
-        var data = new VoxelData(chunkSize, chunkSize/2 * Vector3.one, offset);
-        //var data = new VoxelData(chunkSize, chunkSize/2 * Vector3.one, offset);
+    public List<Mesh> MakeChunk(Dictionary<Vector3Int, Chunk> world, Vector3Int currChunkCoord, int chunkSize, Vector3 offset, int chunkIndex = 0) {
         _Start = Vector3.zero;
-        _End = data._size * Vector3.one;
+        _End = chunkSize * Vector3.one;
         _Diff = _End - _Start;
-        //_CellSize =1.0f;
-        _XCount = data.dataWidth;
-        _YCount = data.dataHeight;
-        _ZCount = data.dataDepth;
-        //var renderer = EditorGUILayout.ObjectField("Cell size", renderer, typeof(VoxelRenderer));
-        int ctr = 0;
-        System.Random rand = new System.Random((int)(chunkSize * (offset.x + offset.y + offset.z) * chunkIndex));
-        Debug.Log("SmoothMesh Seed: " + (int)(chunkSize * (offset.x + offset.y + offset.z)));
-		foreach(Vector2 wormSetting in wormSettings)
-		{
-			Debug.Log("Worming...");
-			var worm = new PerlinWorm((int)wormSetting.x, (int)wormSetting.y, new Vector3((data.dataWidth / 2) + offset.x, (data.dataHeight / 2) + offset.y, (data.dataDepth / 2) + offset.z), Mathf.Sin(wormSetting.x), Mathf.Cos(wormSetting.y), Mathf.Tan(wormSetting.x + wormSetting.y));
-            Debug.Log("Worm center: " + new Vector3(data.dataWidth / 2, data.dataHeight / 2, data.dataDepth / 2));
-			worm.Wormify(data, new Vector3(data.dataWidth / 2, data.dataHeight / 2, data.dataDepth / 2), offset * size);
-            ctr ++;
-		}
+        
+        _XCount = chunkSize + 1;
+        _YCount = chunkSize + 1;
+        _ZCount = chunkSize;
 
-        return Render(data, (offset*size)).chunkMesh;
+        vertices = new List<Vector3>();
+        tris = new List<Vector3>();
+        VoxelData d = world[currChunkCoord].data;
+        for(int x = 0; x < d.dataWidth; x++)
+        {
+            for(int y = 0; y < d.dataWidth; y++)
+            {
+                for(int z = 0; z < d.dataWidth; z++)
+                {
+                    Debug.DrawRay(new Vector3(x, y, z), Vector3.one, new Color(d.dataArray[x,y,z], d.dataArray[x,y,z], d.dataArray[x,y,z]));
+                }
+            }
+        }
+        //return null;
+        return GenerateMeshInput(world, currChunkCoord, offset * chunkSize).chunkMesh;
     }
 
     Vector3[] offsets = {
@@ -386,22 +367,27 @@ public class SmoothMeshRenderer : MonoBehaviour
 
     const int MAX_VERTS = 65534;
 
-    ChunkData GenerateMeshInput(VoxelData data, Vector3 offset)
+    ChunkData GenerateMeshInput(Dictionary<Vector3Int, Chunk> world, Vector3Int currChunkCoord, Vector3 offset) //generates mesh from input data
     {
         ChunkData thisChunk = new ChunkData();
         thisChunk.chunkMesh = new List<Mesh>();
+
+        VoxelData data = world[currChunkCoord].data;
+
         float[] TopGrid = new float[_XCount * _YCount];
         float[] BottomGrid = new float[_XCount * _YCount];
-        FillGrid(TopGrid, (int)_Start.z, data);
+        
         int z = 1;
         while(z < _ZCount)
         {
             vertices.Clear();
             tris.Clear();
+
+            FillGrid(TopGrid, (int)_Start.z, world, currChunkCoord);
             int vertexCount = 0;
-            while(z< _ZCount && vertexCount < MAX_VERTS - 12)//max verts minus the most verts that could be returned
+            while(z < _ZCount && vertexCount < MAX_VERTS - 12)//max verts minus the most verts that could be returned
             {
-                FillGrid(BottomGrid, z, data);
+                FillGrid(BottomGrid, z, world, currChunkCoord);
                 vertexCount += PolygonizeGrids(TopGrid, BottomGrid, z);
                 var temp = TopGrid;
                 TopGrid = BottomGrid;
@@ -412,6 +398,15 @@ public class SmoothMeshRenderer : MonoBehaviour
             {
                 Debug.LogWarning("Exceeded Max Vert Count, splitting mesh");
             }
+
+            //Vector3Int topZ = currChunkCoord + new Vector3Int(0, 0, 1);
+            //Debug.Log("Current Chunk = " + currChunkCoord);
+            //Debug.Log("Top z chunk coord = " + topZ);
+            //if(world.ContainsKey(topZ))
+            //{
+                //FillGrid(BottomGrid, data.dataDepth-1, world, topZ);
+                //vertexCount += PolygonizeGrids(TopGrid, BottomGrid, 0);
+            //}
             //Debug.Log("Indices visited: " + TopGrid.Length * _ZCount);
             int numMeshes = (vertices.Count / MAX_VERTS) + 1;
             Debug.Log("Verts: " + vertices.Count);
@@ -425,16 +420,11 @@ public class SmoothMeshRenderer : MonoBehaviour
             for(int i = 0; i < genVerts.Length; i++)
             {
                 genVerts[i] = vertices[i] + offset;
-                Vector3 vertValue = (vertices[i] + offset).normalized;
+                Vector3 vertValue = (vertices[i] + offset).normalized; 
                 meshColors[i] = new Color(vertValue.x, vertValue.y, vertValue.z);
                 //meshColors[i] = Color.black;
             }
-            /*for(int i = vertices.Count; i< 2 * vertices.Count; i++)
-            {
-                genVerts[i] = vertices[i - vertices.Count] + offset;
-                Vector3 vertValue = (vertices[i - vertices.Count] + offset).normalized;
-                meshColors[i] = new Color(vertValue.x, vertValue.y, vertValue.z);
-            }*/
+
             generatedMesh.vertices = genVerts;
             int[] triIndices = new int[tris.Count * 3];
 
@@ -449,17 +439,6 @@ public class SmoothMeshRenderer : MonoBehaviour
                 meshNormals[triIndices[(i * 3) + 2]] += cross;
             }
 
-            /*for(int i =tris.Count/2; i<tris.Count; i++) //backfaces
-            {
-                triIndices[(i * 3)] =(int) tris[i - tris.Count/2].x;
-                triIndices[(i * 3) + 1] =(int) tris[i - tris.Count/2].y;
-                triIndices[(i * 3) + 2] =(int) tris[i - tris.Count/2].z;
-                Vector3 cross = Vector3.Cross(genVerts[triIndices[(i * 3) + 1]] - genVerts[triIndices[(i * 3)]], genVerts[triIndices[(i * 3) + 2]] - genVerts[triIndices[(i * 3)]]);
-                meshNormals[triIndices[(i * 3) + tris.Count/2]] += cross;
-                meshNormals[triIndices[(i * 3) + 1 + tris.Count/2]] += cross;
-                meshNormals[triIndices[(i * 3) + 2 + tris.Count/2]] += cross;
-            }*/
-            //Debug.Log(vertices.Count);
             for(int i = 0; i<meshNormals.Length; i++)
             {
                 meshNormals[i] = Vector3.Normalize(meshNormals[i]);
@@ -468,43 +447,14 @@ public class SmoothMeshRenderer : MonoBehaviour
             generatedMesh.normals = meshNormals;
             generatedMesh.colors = meshColors;
             
-            /*GameObject thisChunk = new GameObject("Mesh");
-            thisChunk.AddComponent(typeof(MeshFilter));
-            thisChunk.AddComponent(typeof(MeshRenderer));
-            thisChunk.GetComponent<MeshFilter>().mesh = generatedMesh;
-            thisChunk.GetComponent<MeshRenderer>().material = materialToUse;*/
-            //MeshCollider meshc = thisChunk.AddComponent(typeof(MeshCollider)) as MeshCollider;
-            //meshc.sharedMesh = generatedMesh; // Give it your mesh here.
             thisChunk.chunkMesh.Add(generatedMesh);
             thisChunk.chunkMaterial = materialToUse;
+            Debug.Log(z + "z");
+            //z--; //go back a z to make sure everything touches (no gaps)
         }
         vertices.Clear();
         tris.Clear();
         return thisChunk;
-    }
-
-    Vector3 CalcNormal(Vector3 position, int index)
-    {
-        Vector3 normal;
-        if(index == 0)
-        {
-            Vector3 ab = vertices[index + 1] - vertices[index];
-            Vector3 ac = vertices[vertices.Count-1] - vertices[index];
-            normal = Vector3.Cross(ab, ac).normalized;
-        }
-        else if (index == vertices.Count - 1)
-        {
-            Vector3 ab = vertices[0] - vertices[index];
-            Vector3 ac = vertices[index - 1] - vertices[index];
-            normal = Vector3.Cross(ab, ac).normalized;
-        }
-        else
-        {
-            Vector3 ab = vertices[index + 1] - vertices[index];
-            Vector3 ac = vertices[index - 1] - vertices[index];
-            normal = Vector3.Cross(ab, ac).normalized;
-        }
-        return normal;
     }
 
     struct GridData{
@@ -650,15 +600,53 @@ public class SmoothMeshRenderer : MonoBehaviour
         return p;
     }
   
-    void FillGrid(float[] Grid, int z, VoxelData data)
+    void FillGrid(float[] Grid, int z, Dictionary<Vector3Int, Chunk> world, Vector3Int currChunkCoord)
     {
         for (int x = 0; x< _XCount; x++)
         {
             for(int y = 0; y< _YCount; y++)
             {
-                Vector3 Pos = new Vector3(_Start.x + (_CellSize * x), _Start.y + (_CellSize * y), _Start.z + (_CellSize * (z)));
-                //Debug.Log("Get Cell: " + new Vector3((int)(Pos.x + data._size/2), (int)(Pos.y + data._size/2), (int)(Pos.z + data._size/2)));
-                Grid[(int)(x-_Start.x) * _YCount + (int)(y - _Start.y)] =   data.GetCell((int)(Pos.x), (int)(Pos.y), (int)(Pos.z));
+                if(x < _XCount - 1 && y < _YCount - 1)
+                {
+                    Vector3 Pos = new Vector3(_Start.x + (_CellSize * x), _Start.y + (_CellSize * y), _Start.z + (_CellSize * (z)));
+                    //Debug.Log("Get Cell: " + new Vector3((int)(Pos.x), (int)(Pos.y), (int)(Pos.z)));
+                    Grid[(int)(x-_Start.x) * _YCount + (int)(y - _Start.y)] =   world[currChunkCoord].data.GetCell((int)(Pos.x), (int)(Pos.y), (int)(Pos.z));
+                }
+                else if(x >= _XCount - 1 && y < _YCount - 1)
+                {
+                    currChunkCoord.x += 1;
+                    if(world.ContainsKey(currChunkCoord))
+                    {
+                        Vector3 Pos = new Vector3(0, _Start.y + (_CellSize * y), _Start.z + (_CellSize * (z)));
+                        //Debug.Log("Get Cell: " + new Vector3((int)(Pos.x + data._size/2), (int)(Pos.y + data._size/2), (int)(Pos.z + data._size/2)));
+                        Grid[(int)(x-_Start.x) * _YCount + (int)(y - _Start.y)] =   world[currChunkCoord].data.GetCell((int)(Pos.x), (int)(Pos.y), (int)(Pos.z));
+                    }
+                    currChunkCoord.x -= 1;
+                }
+                else if(x < _XCount - 1 && y >= _YCount - 1)
+                {
+                    currChunkCoord.y += 1;
+                    if(world.ContainsKey(currChunkCoord))
+                    {
+                        Vector3 Pos = new Vector3(_Start.x + (_CellSize * x), 0, _Start.z + (_CellSize * (z)));
+                        //Debug.Log("Get Cell: " + new Vector3((int)(Pos.x + data._size/2), (int)(Pos.y + data._size/2), (int)(Pos.z + data._size/2)));
+                        Grid[(int)(x-_Start.x) * _YCount + (int)(y - _Start.y)] =   world[currChunkCoord].data.GetCell((int)(Pos.x), (int)(Pos.y), (int)(Pos.z));
+                    }
+                    currChunkCoord.y -= 1;
+                }
+                else if(x >= _XCount - 1 && y >= _YCount - 1)
+                {
+                    currChunkCoord.x += 1;
+                    currChunkCoord.y += 1;
+                    if(world.ContainsKey(currChunkCoord))
+                    {
+                        Vector3 Pos = new Vector3(0, 0, _Start.z + (_CellSize * (z)));
+                        //Debug.Log("Get Cell: " + new Vector3((int)(Pos.x + data._size/2), (int)(Pos.y + data._size/2), (int)(Pos.z + data._size/2)));
+                        Grid[(int)(x-_Start.x) * _YCount + (int)(y - _Start.y)] =   world[currChunkCoord].data.GetCell((int)(Pos.x), (int)(Pos.y), (int)(Pos.z));
+                    }
+                    currChunkCoord.x -= 1;
+                    currChunkCoord.y -= 1;
+                }
             }
         }
     }
