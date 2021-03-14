@@ -73,9 +73,10 @@ Shader "Custom/TwinkleRockShader"
 
             float twinkleSpeed = 100;
             float twinkleMaxSize = 10;
-            float twinkleOffset = twinkleSeed / 10;
-            float _twinkleWidth = (sin(_Time * twinkleSpeed + twinkleOffset) + 1)/(2 * twinkleMaxSize);
-            float _twinkleHeight = (sin(_Time * twinkleSpeed + twinkleOffset) + 1)/(2 * twinkleMaxSize);
+            //mod by 2pi to minimize twinkles twinkling with similar offsets
+            float twinkleOffset = twinkleSeed % 2 * 3.14159265f;
+            float _twinkleWidth = (sin((_Time * twinkleSpeed) - twinkleOffset) + 1)/(2 * twinkleMaxSize);
+            float _twinkleHeight = (sin((_Time * twinkleSpeed) - twinkleOffset) + 1)/(2 * twinkleMaxSize);
 
             bool goodGraph = uv.y <= abs(1/(twinkleSlope * (uv.x - centerX))) + centerY && uv.y >= -1 * (abs(1/(twinkleSlope * (uv.x - centerX)))) + centerY;
             bool goodX = uv.x > centerX - _twinkleWidth && uv.x < centerX + _twinkleWidth;

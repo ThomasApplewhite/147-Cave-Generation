@@ -153,13 +153,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   scale: 1
-  size: 1000
+  size: 100
   generatedVoxelsPerTick: 100
   origin: {x: 0, y: 0, z: 0}
   wormSettings:
-  - {x: 25, y: 3}
-  - {x: 75, y: 1}
-  - {x: 50, y: 2}
+  - {x: 25, y: 1}
   dumbCube: {fileID: 305138858194978407, guid: a6ee5e8d7ee661dd2a9a4f4d2c5d2a46, type: 3}
 --- !u!23 &137648091
 MeshRenderer:
