@@ -85,7 +85,7 @@ public class VoxelData
 
     float AllZeros(Vector3 x)
     {
-        return -1;
+        return -100f;
     }
 
     int FlatPerlinNoise(Vector3 v)
@@ -107,13 +107,6 @@ public class VoxelData
 
     float InitValues(Vector3 x)
     {
-        float val = PerlinNoise3D(x.x, x.y, x.z);
-        /*float val = -1;
-        if(x.z <= _size/2 && x.x <= _size/2 && x.y <= _size/2)
-        {
-            val = 1;
-        }*/
-        //float val = TestFunction(x);
         return AllZeros(x);
     }
 

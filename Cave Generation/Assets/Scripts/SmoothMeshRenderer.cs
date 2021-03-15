@@ -322,8 +322,8 @@ public class SmoothMeshRenderer : MonoBehaviour
         _End = chunkSize * Vector3.one;
         _Diff = _End - _Start;
         
-        _XCount = chunkSize + 1;
-        _YCount = chunkSize + 1;
+        _XCount = chunkSize;
+        _YCount = chunkSize;
         _ZCount = chunkSize;
 
         vertices = new List<Vector3>();
@@ -335,7 +335,7 @@ public class SmoothMeshRenderer : MonoBehaviour
             {
                 for(int z = 0; z < d.dataWidth; z++)
                 {
-                    Debug.DrawRay(new Vector3(x, y, z), Vector3.one, new Color(d.dataArray[x,y,z], d.dataArray[x,y,z], d.dataArray[x,y,z]));
+                    Debug.DrawRay(new Vector3(x, y, z), Vector3.one, new Color((d.dataArray[x,y,z] + 1)/2, (d.dataArray[x,y,z] + 1)/2, (d.dataArray[x,y,z]+ 1)/2));
                 }
             }
         }
@@ -449,7 +449,7 @@ public class SmoothMeshRenderer : MonoBehaviour
             
             thisChunk.chunkMesh.Add(generatedMesh);
             thisChunk.chunkMaterial = materialToUse;
-            Debug.Log(z + "z");
+            //Debug.Log(z + "z");
             //z--; //go back a z to make sure everything touches (no gaps)
         }
         vertices.Clear();
@@ -606,7 +606,14 @@ public class SmoothMeshRenderer : MonoBehaviour
         {
             for(int y = 0; y< _YCount; y++)
             {
-                if(x < _XCount - 1 && y < _YCount - 1)
+                Vector3 Pos = new Vector3(_Start.x + (_CellSize * x), _Start.y + (_CellSize * y), _Start.z + (_CellSize * (z)));
+                //Debug.Log("Get Cell: " + new Vector3((int)(Pos.x), (int)(Pos.y), (int)(Pos.z)));
+                Grid[(int)(x-_Start.x) * _YCount + (int)(y - _Start.y)] =   world[currChunkCoord].data.GetCell((int)(Pos.x), (int)(Pos.y), (int)(Pos.z));
+            }
+        }
+    }
+
+    /*if(x < _XCount - 1 && y < _YCount - 1)
                 {
                     Vector3 Pos = new Vector3(_Start.x + (_CellSize * x), _Start.y + (_CellSize * y), _Start.z + (_CellSize * (z)));
                     //Debug.Log("Get Cell: " + new Vector3((int)(Pos.x), (int)(Pos.y), (int)(Pos.z)));
@@ -646,10 +653,7 @@ public class SmoothMeshRenderer : MonoBehaviour
                     }
                     currChunkCoord.x -= 1;
                     currChunkCoord.y -= 1;
-                }
-            }
-        }
-    }
+                }*/
     
     int PolygonizeGrids(float[] TopVals, float[] BottomVals, int z)
     {
