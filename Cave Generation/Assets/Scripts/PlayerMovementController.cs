@@ -33,7 +33,7 @@ public class PlayerMovementController : MonoBehaviour
         {
             moveDirY = jumpHeight;
         }
-        if(!playerController.isGrounded)
+        if(hit.collider == null)
         {
             moveDirY -= gravity * Time.deltaTime;
         }

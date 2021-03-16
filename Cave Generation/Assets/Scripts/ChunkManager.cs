@@ -9,6 +9,15 @@ public class ChunkManager : MonoBehaviour
     public int chunkSize = 100;
     public bool generateColliders = true;
 
+    public string seedInput = "default seed";
+    private int seed;
+
+    public int maxWorms = 7;
+    public int maxWormLength = 150;
+    public int minWormLength = 20;
+
+    public int maxWormRadius;
+    public int minWormRadius;
     [Header("Worm Settings: X is length, Y is worm radius")]
 	public List<Vector2> wormSettings;
     GameObject chunkHolder;
@@ -17,13 +26,28 @@ public class ChunkManager : MonoBehaviour
     Dictionary<Vector3Int, Chunk> existingChunks;
     Queue<Chunk> recycleableChunks;
 
+    System.Random rand;
+
     void Start() {
         meshGenerator = FindObjectOfType<SmoothMeshRenderer>();
         existingChunks = new Dictionary<Vector3Int, Chunk>();
+        rand = new System.Random(HashSeed());
         InitChunks ();
+        WormifyChunks();
         UpdateAllChunks ();
     }
 
+    int HashSeed()
+    {
+        //take string input seed, add together char values
+        //to get numerical seed
+        char[] seedChars = seedInput.ToCharArray();
+        for(int i = 0; i<seedChars.Length; i++)
+        {
+            seed += seedChars[i];
+        }
+        return seed;
+    }
     
     void CreateChunkHolder () {
         // Create/find mesh holder object for organizing chunks under in the hierarchy
@@ -76,22 +100,29 @@ public class ChunkManager : MonoBehaviour
         for (int i = 0; i < oldChunks.Count; i++) {
             oldChunks[i].DestroyOrDisable ();
         }
+    }
+
+    void WormifyChunks()
+    {
         foreach(Chunk c in chunks)
         {
-            foreach(Vector2 wormSetting in wormSettings)
+            //number of worms (1, maxWorms)
+            int numWorms = (int)((float)rand.NextDouble() * (maxWorms - 1)) + 1;
+            Debug.Log("wormSettings:" + numWorms);
+            for(int i = 0; i<numWorms; i++)
 		    {
-			    //Debug.Log("Worming...");
-                //Debug.Log("Coord: " + c.coord);
-			    var worm = new PerlinWorm((int)wormSetting.x, (int)wormSetting.y, new Vector3((c.data.dataWidth / 2) + c.coord.x, (c.data.dataHeight / 2) + c.coord.y, (c.data.dataDepth / 2) + c.coord.z),
-                             Mathf.Sin(wormSetting.x), Mathf.Cos(wormSetting.y), Mathf.Tan(wormSetting.x + wormSetting.y));
-                //Debug.Log("Worm center: " + new Vector3(chunkSize / 2, chunkSize / 2, chunkSize / 2));
+			    int wormLength = (int) minWormLength + (int)((float)rand.NextDouble() * (maxWormLength - minWormLength));
+                int wormRadius = (int) minWormRadius + (int)((float)rand.NextDouble() * (maxWormRadius - minWormRadius));
+                var worm = new PerlinWorm(wormLength, wormRadius, new Vector3((c.data.dataWidth / 2) + c.coord.x, (c.data.dataHeight / 2) + c.coord.y, (c.data.dataDepth / 2) + c.coord.z),
+                             Mathf.Sin(wormLength), Mathf.Cos(wormRadius), Mathf.Tan(wormLength + wormRadius));
 			    worm.Wormify(existingChunks, c.coord, new Vector3(chunkSize / 2, chunkSize / 2, chunkSize / 2), c.coord * chunkSize);
 		    }
         }
-        var walkableWorms = new PerlinWorm(1000, 5, new Vector3((chunks[0].data.dataWidth / 2) + chunks[0].coord.x, (chunks[0].data.dataHeight / 2) + chunks[0].coord.y, (chunks[0].data.dataDepth / 2) + chunks[0].coord.z),
+        /*var walkableWorms = new PerlinWorm(1000, 5, new Vector3((chunks[0].data.dataWidth / 2) + chunks[0].coord.x, (chunks[0].data.dataHeight / 2) + chunks[0].coord.y, (chunks[0].data.dataDepth / 2) + chunks[0].coord.z),
              Mathf.Sin(1000), Mathf.Cos(10), Mathf.Tan(1010));
-        walkableWorms.WalkableWorms(existingChunks, chunks[0].coord, chunks[1].coord, new Vector3(chunkSize / 2, chunkSize / 2, chunkSize / 2), chunks[0].coord * chunkSize);
+        walkableWorms.WalkableWorms(existingChunks, chunks[0].coord, chunks[1].coord, new Vector3(chunkSize / 2, chunkSize / 2, chunkSize / 2), chunks[0].coord * chunkSize);*/
     }
+
     SmoothMeshRenderer meshGenerator;
     Chunk CreateChunk (Vector3Int coord) {
         GameObject chunk = new GameObject ($"Chunk ({coord.x}, {coord.y}, {coord.z})");
