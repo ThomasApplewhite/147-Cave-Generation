@@ -26,6 +26,7 @@ public class VoxelRenderer : MonoBehaviour {
 	public List<Vector2> wormSettings;
 
 	public GameObject dumbCube;
+	public GameObject modelCube;
 
 
 
@@ -70,7 +71,7 @@ public class VoxelRenderer : MonoBehaviour {
                 	else
                 	{	//
 						//Debug.Log($"Generating Voxel on {x}, {y}, {z}");
-						StupidMakeCube(new Vector3((float)x, (float)y, (float)z));
+						StupidMakeCube(new Vector3((float)x, (float)y, (float)z), data.GetCell(x, y, z));
                 	    //MakeCube(adjScale, new Vector3((float)x * scale, (float)y * scale, (float)z * scale));
 						++boxCount;
 						if(boxCount > generatedVoxelsPerTick)
@@ -118,9 +119,16 @@ public class VoxelRenderer : MonoBehaviour {
 		}
 	}
 
-	void StupidMakeCube(Vector3 position)
+	void StupidMakeCube(Vector3 position, int cubeCode)
 	{
-		Instantiate(dumbCube, position, Quaternion.identity);
+		if(cubeCode == 2)
+		{
+			Instantiate(modelCube, position, UnityEngine.Random.rotation);
+		}
+		else
+		{
+			Instantiate(dumbCube, position, Quaternion.identity);
+		}
 	}
 
 	void MakeFace (int dir, float faceScale, Vector3 facePos){

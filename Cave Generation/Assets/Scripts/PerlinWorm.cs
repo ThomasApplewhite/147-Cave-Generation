@@ -120,6 +120,11 @@ public class PerlinWorm
                 for(int z = minZ; z <= maxZ; ++z)
                 {
                     map.SetCell(0, x, y, z);
+
+                    if(placeItem(x, y, z, minX, maxX, minY, maxY, minZ, maxZ))
+                    {
+                        map.SetCell(2, x, y, z);
+                    }
                 }
             }
         }
@@ -151,9 +156,23 @@ public class PerlinWorm
                 for(int z = minZ; z <= maxZ; ++z)
                 {
                     map.SetCell(1, x, y, z);
+
+                    if(placeItem(x, y, z, minX, maxX, minY, maxY, minZ, maxZ))
+                    {
+                        map.SetCell(2, x, y, z);
+                    }
                 }
             }
         }
+    }
+
+    bool placeItem(int x, int y, int z, int minX, int maxX, int minY, int maxY, int minZ, int maxZ)
+    {
+        bool xCheck = (x == minX || x == maxX);
+        bool yCheck = (y == minY || y == maxY);
+        bool zCheck = (z == minZ || z == maxZ);
+
+        return (UnityEngine.Random.Range(0.0f, 10.0f) > 9.0f) && (xCheck || yCheck || zCheck);
     }
 
     /*There are MUCH better Perlin noise functions than Unity's built in, but whatever
