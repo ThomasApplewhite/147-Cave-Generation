@@ -3,15 +3,13 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 
-//algorithm and some code taken from here: http://paulbourke.net/geometry/polygonise/ and here https://graphics.stanford.edu/~mdfisher/MarchingCubes.html
-
 public class SmoothMeshRenderer : MonoBehaviour
 {
     Mesh generatedMesh;
     [Header("Smooth shading increases load times significantly")]
     public bool smoothShade = true;
     
-    #region Lookup tables
+    #region Lookup tables by Cory Gene Bloyd
     int[] edgeTable={
         0x0  , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
         0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,
@@ -306,7 +304,7 @@ public class SmoothMeshRenderer : MonoBehaviour
 #endregion
 
 
-    public List<Mesh> MakeChunk(Dictionary<Vector3Int, Chunk> world, Vector3Int currChunkCoord, int chunkSize, Vector3 offset, int chunkIndex = 0) {
+    public List<Mesh> MakeChunk(Dictionary<Vector3Int, Chunk> world, Vector3Int currChunkCoord, int chunkSize) {
         _Start = Vector3.zero;
         _End = chunkSize * Vector3.one;
         _Diff = _End - _Start;
@@ -314,24 +312,10 @@ public class SmoothMeshRenderer : MonoBehaviour
         _XCount = chunkSize + 1;
         _YCount = chunkSize + 1;
         _ZCount = chunkSize;
-        for(int x = 0; x<world[currChunkCoord].data.dataDepth; x++)
-        {
-            for(int y = 0; y<world[currChunkCoord].data.dataDepth; y++)
-            {
-                if(world[currChunkCoord].data.dataArray[x, y, 0] != -1)
-                {
-                    Debug.Log("z = 0: " + world[currChunkCoord].data.dataArray[x, y, 0]);
-                }
-                else if(world[currChunkCoord].data.dataArray[x, y, world[currChunkCoord].data.dataDepth - 1] != -1)
-                {
-                    Debug.Log("z = dataDepth - 1: " + world[currChunkCoord].data.dataArray[x, y, world[currChunkCoord].data.dataDepth - 1]);
-                }
-            }
-        }
 
         vertices = new List<Vector3>();
         tris = new List<Vector3>();
-        return GenerateMeshInput(world, currChunkCoord, offset * chunkSize);
+        return GenerateMeshInput(world, currChunkCoord, currChunkCoord * chunkSize);
     }
 
     List<Vector3> vertices = new List<Vector3>();
@@ -339,7 +323,7 @@ public class SmoothMeshRenderer : MonoBehaviour
     Vector3 _Start = Vector3.zero;
     Vector3 _End;
     Vector3 _Diff;
-    public float _CellSize = 1f;
+    float _CellSize = 1f;
     int _XCount;
     int _YCount;
     int _ZCount;
@@ -364,7 +348,7 @@ public class SmoothMeshRenderer : MonoBehaviour
             FillGrid(TopGrid, z, world, currChunkCoord);
             z++;
             int vertexCount = 0;
-            while(z < _ZCount && vertexCount < MAX_VERTS - 12000)//max verts minus the most verts that could be returned
+            while(z < _ZCount && vertexCount < MAX_VERTS - 12000)//max verts minus the most verts that could be returned (12 verts per cube, 1000 cubes in a grid pair)
             {
                 FillGrid(BottomGrid, z, world, currChunkCoord);
                 int newVerts = PolygonizeGrids(TopGrid, BottomGrid, z, Vector3.zero);
@@ -392,26 +376,27 @@ public class SmoothMeshRenderer : MonoBehaviour
                 FillGrid(BottomGrid, 1, world, topZ);
                 vertexCount += PolygonizeGrids(TopGrid, BottomGrid, 1, new Vector3Int(0, 0, data.dataWidth));
             }
-            //Debug.Log("Indices visited: " + TopGrid.Length * _ZCount);
-            int numMeshes = (vertices.Count / MAX_VERTS) + 1;
+           
+
             Debug.Log("Verts: " + vertices.Count);
             Debug.Log("Tris: " + tris.Count);
-            Debug.Log("Ratio: " + ((float)vertices.Count)/tris.Count);
-            Debug.Log(numMeshes);
+
+            //mesh generation from calculated vertices
             generatedMesh = new Mesh();
             Vector3[] genVerts = new Vector3[vertices.Count];
             Vector3[] meshNormals = new Vector3[vertices.Count];
-            Color[] meshColors = new Color[vertices.Count];
+            Color[] meshColors = new Color[vertices.Count]; //colors for debug only
+            //mesh vertices
             for(int i = 0; i < genVerts.Length; i++)
             {
                 genVerts[i] = vertices[i] + offset;
                 Vector3 vertValue = (vertices[i]); 
                 meshColors[i] = new Color(vertValue.y/100f, vertValue.y/100f, vertValue.y/100f);
             }
-
             generatedMesh.vertices = genVerts;
-            int[] triIndices = new int[tris.Count * 3];
 
+            //triangle vertices
+            int[] triIndices = new int[tris.Count * 3];
             for(int i = 0; i<(triIndices.Length/3) - 2; i++) //forwards triangles
             {
                 triIndices[(i * 3)] =(int) tris[i].z;
@@ -422,7 +407,10 @@ public class SmoothMeshRenderer : MonoBehaviour
                 meshNormals[triIndices[(i * 3) + 1]] += cross;
                 meshNormals[triIndices[(i * 3) + 2]] += cross;
             }
+            generatedMesh.triangles = triIndices;
 
+            //smooth mesh normals or flat mesh normals
+            //toggle-able because it increases load time a lot
             Vector3[] smoothMeshNormals = null;
             if(smoothShade)
             {
@@ -433,8 +421,6 @@ public class SmoothMeshRenderer : MonoBehaviour
                     smoothMeshNormals[i] = ComputeVertexNormal(genVerts[i] - offset, meshNormals);
                 }
             }
-
-            generatedMesh.triangles = triIndices;
             if(smoothShade)
             {
                 generatedMesh.normals = smoothMeshNormals;
@@ -443,15 +429,19 @@ public class SmoothMeshRenderer : MonoBehaviour
             {
                 generatedMesh.normals = meshNormals;
             }
+
             generatedMesh.colors = meshColors;
             
+            //meshes stored in a list because one chunk tends to go over the maximum vertex count
             chunkMesh.Add(generatedMesh);
-            //if mesh split mid gen, go over and do a bridging section
+
+            //if mesh splits mid gen, go over and do a bridging section between meshes
             if(z<_ZCount)
             {
                 z--;
             }
         }
+        //clear lists
         vertices.Clear();
         tris.Clear();
         return chunkMesh;
@@ -459,6 +449,7 @@ public class SmoothMeshRenderer : MonoBehaviour
 
     Vector3 ComputeVertexNormal(Vector3 vertex, Vector3[] meshNormals)
     {
+        //find faces around current vertex
         List<int> adjFaces = new List<int>();
         int pFace = 0;
         for(int i = 0; i<tris.Count; i++, pFace ++)
@@ -477,6 +468,7 @@ public class SmoothMeshRenderer : MonoBehaviour
             }
         }
 
+        //calculate avg of face normals at vertex
         Vector3 p = Vector3.zero;
         for(int j = 0; j<adjFaces.Count; j++)
         {
@@ -494,8 +486,11 @@ public class SmoothMeshRenderer : MonoBehaviour
         public Vector3[] loc;
     }
 
+    //algorithm and some code interpreted into c# from here: http://paulbourke.net/geometry/polygonise/ 
+    //and here https://graphics.stanford.edu/~mdfisher/MarchingCubes.html
     int Polygonize(GridData gridCell, float isolevel, List<Vector3> triangles, List<Vector3> localVertices, out int newVertexCount)
     {
+        //bitmask to figure out which vertices of the cube are above/below the isosurface
         int cubeindex = 0;
         if (gridCell.value[0] <= isolevel) cubeindex |= 1;
         if (gridCell.value[1] <= isolevel) cubeindex |= 2;
@@ -511,6 +506,7 @@ public class SmoothMeshRenderer : MonoBehaviour
         int[] LocalRemap = new int[12];
         newVertexCount = 0;
 
+        //look up these in the edge table to find the place along the edges to place vertices
         if (edgeTable[cubeindex] == 0)
 		    return 0;
 
@@ -552,6 +548,7 @@ public class SmoothMeshRenderer : MonoBehaviour
                 VertexInterp(isolevel,gridCell.loc[3],gridCell.loc[7],gridCell.value[3],gridCell.value[7]);
 
 
+        //put everything in the correct order to add new vertices and triangles to our global vert/tri list
         for(int i = 0; i<12; i++)
         {
             LocalRemap[i] = -1;
@@ -582,15 +579,18 @@ public class SmoothMeshRenderer : MonoBehaviour
         return triangleCount;
     }
 
-
+    //interpreted into c# from https://graphics.stanford.edu/~mdfisher/MarchingCubes.html
     int PushPolygons(GridData g, Vector3 offset){
 	    int NewVertexCount = vertices.Count;
         int IndexShift = vertices.Count;
         List<Vector3> vertStorage = new List<Vector3>();
         List<Vector3> triStorage = new List<Vector3>();
+
+        //turn the grid data of this cube into some polygons! 
 	    int NewFaceCount = Polygonize(g, _IsoLevel, triStorage, vertStorage, out NewVertexCount);
 	    if(NewFaceCount != 0)
 	    {
+            //add our new triangles to the global triangle list
 		    for(int FaceIndex = 0; FaceIndex < NewFaceCount; FaceIndex++)
 		    {
                 Vector3 thisTri = triStorage[FaceIndex];
@@ -600,6 +600,7 @@ public class SmoothMeshRenderer : MonoBehaviour
                 triStorage[FaceIndex] = thisTri;
 			    tris.Add(triStorage[FaceIndex]);
 		    }
+            //add new vertices to the global vertex list
 		    for(int VertexIndex = 0; VertexIndex < NewVertexCount; VertexIndex++)
 		    {
 			    vertices.Add(vertStorage[VertexIndex] + offset);
@@ -609,8 +610,10 @@ public class SmoothMeshRenderer : MonoBehaviour
 	    return 0;
     }
 
+    //interpreted to c# from http://paulbourke.net/geometry/polygonise/
     Vector3 VertexInterp(float isoLevel, Vector3 p1, Vector3 p2, float valp1, float valp2)
     {
+        //find the midpoint between two weighted points
         if(Mathf.Abs(isoLevel - valp1) < .00001f)
         {
             return p1;
@@ -697,13 +700,16 @@ public class SmoothMeshRenderer : MonoBehaviour
         }
     }
     
+    //interpreted to c# from https://graphics.stanford.edu/~mdfisher/MarchingCubes.html
     int PolygonizeGrids(float[] TopVals, float[] BottomVals, int z, Vector3 offset)
     {
         int newVertices = 0;
+        //go through our two grids and find the polygons spanning them
         for(int x = 0; x < _XCount - 1; x++)
         {
 		    for(int y = 0; y < _YCount - 1; y++)
 		    {
+                //create cube of samples of our data
                 GridData g = new GridData();
                 g.loc = new Vector3[8];
                 g.value = new float[8];
@@ -728,6 +734,7 @@ public class SmoothMeshRenderer : MonoBehaviour
 			    g.value[7] = BottomVals[x*_YCount+y+1];
 
 			    bool Valid = true;
+                //make sure the numbers check out (no overflows)
 			    for(int VertexIndex = 0; VertexIndex < 8 && Valid; VertexIndex++)
 			    {
 				    if(g.value[VertexIndex] == float.MaxValue)
@@ -735,6 +742,7 @@ public class SmoothMeshRenderer : MonoBehaviour
 					    Valid = false;
 				    }
 			    }
+                //calculate the actual polygons at the GridData cube
 			    if(Valid)
 			    {
 				    newVertices += PushPolygons(g, offset);

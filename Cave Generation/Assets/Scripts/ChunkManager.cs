@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class ChunkManager : MonoBehaviour
 {
+    //based on this chunk management system https://github.com/SebLague/Marching-Cubes
     public Vector3Int numChunks = Vector3Int.one;
     public Material mat;
     public int chunkSize = 100;
@@ -130,9 +131,6 @@ public class ChunkManager : MonoBehaviour
                 BuildPaths(chunks[i]);
             }
         }
-        /*var walkableWorms = new PerlinWorm(1000, 5, new Vector3((chunks[0].data.dataWidth / 2) + chunks[0].coord.x, (chunks[0].data.dataHeight / 2) + chunks[0].coord.y, (chunks[0].data.dataDepth / 2) + chunks[0].coord.z),
-             Mathf.Sin(1000), Mathf.Cos(10), Mathf.Tan(1010));
-        walkableWorms.WalkableWorms(existingChunks, chunks[0].coord, chunks[1].coord, new Vector3(chunkSize / 2, chunkSize / 2, chunkSize / 2), chunks[0].coord * chunkSize);*/
     }
 
     void BuildPaths(Chunk node)//recursive DFS
@@ -188,7 +186,7 @@ public class ChunkManager : MonoBehaviour
 
     void UpdateChunkMesh(Chunk chunk)
     {
-        List<Mesh> d = meshGenerator.MakeChunk(existingChunks, chunk.coord, chunkSize, chunk.coord);
+        List<Mesh> d = meshGenerator.MakeChunk(existingChunks, chunk.coord, chunkSize);
         Mesh[] submeshes = new Mesh[d.Count];
         int index = 0;
         foreach(Mesh m in d)
