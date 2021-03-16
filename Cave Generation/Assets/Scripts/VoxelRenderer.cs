@@ -7,7 +7,7 @@ using System.Collections.Generic;
 [RequireComponent (typeof(MeshFilter), typeof(MeshRenderer))]
 public class VoxelRenderer : MonoBehaviour {
 
-	Mesh mesh;
+	/*Mesh mesh;
 	List<Vector3> vertices;
 	List<int> triangles;
 
@@ -150,5 +150,5 @@ public class VoxelRenderer : MonoBehaviour {
 		mesh.vertices = vertices.ToArray();
 		mesh.triangles = triangles.ToArray();
 		mesh.RecalculateNormals ();
-	}
+	}*/
 }

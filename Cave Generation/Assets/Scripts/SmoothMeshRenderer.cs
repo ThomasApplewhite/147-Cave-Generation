@@ -5,9 +5,15 @@ using UnityEditor;
 
 public class SmoothMeshRenderer : MonoBehaviour
 {
+    public GameObject crystal;
     Mesh generatedMesh;
     [Header("Smooth shading increases load times significantly")]
     public bool smoothShade = true;
+    System.Random rand;
+
+    void Awake() {
+        rand = new System.Random();    
+    }
     
     #region Lookup tables by Cory Gene Bloyd
     int[] edgeTable={
@@ -415,10 +421,30 @@ public class SmoothMeshRenderer : MonoBehaviour
             if(smoothShade)
             {
                 smoothMeshNormals = new Vector3[meshNormals.Length];
+                for(int i = 0; i<smoothMeshNormals.Length; i++)
+                {
+                    smoothMeshNormals[i] = ComputeVertexNormal(genVerts[i] - offset, meshNormals);
+                    if(rand.NextDouble() < .0001)
+                    {
+                        Quaternion cRot = new Quaternion(0, 0, 0, 0);
+                        Vector3 arbitraryForwards = new Vector3(1, 2, ((-1 * smoothMeshNormals[i].x) + (-2 * smoothMeshNormals[i].y))/smoothMeshNormals[i].z);
+                        //cRot.SetLookRotation(arbitraryForwards, smoothMeshNormals[i]);
+                        Instantiate(crystal, genVerts[i], cRot);
+                    }
+                }
+            }
+            else
+            {
                 for(int i = 0; i<meshNormals.Length; i++)
                 {
-                    //meshNormals[i] = Vector3.Normalize(meshNormals[i]);
-                    smoothMeshNormals[i] = ComputeVertexNormal(genVerts[i] - offset, meshNormals);
+                    meshNormals[i] = Vector3.Normalize(meshNormals[i]);
+                    if(rand.NextDouble() < .0001)
+                    {
+                        Quaternion cRot = new Quaternion(0, 0, 0, 0);
+                        Vector3 arbitraryForwards = new Vector3(1, 2, ((-1 * meshNormals[i].x) + (-2 * meshNormals[i].y))/meshNormals[i].z);
+                        //cRot.SetLookRotation(arbitraryForwards, meshNormals[i]);
+                        Instantiate(crystal, genVerts[i], Quaternion.identity);
+                    }
                 }
             }
             if(smoothShade)
