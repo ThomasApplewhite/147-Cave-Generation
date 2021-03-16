@@ -13,11 +13,14 @@ public class PlayerMovementController : MonoBehaviour
     private float moveDirY = 0;
     private Quaternion rotation = Quaternion.identity;
     private CameraController camController;
+    private ChunkManager chunkMan;
 
     private void Awake()
     {
+        chunkMan = FindObjectOfType<ChunkManager>();
         playerController = this.GetComponent<CharacterController>();
         camController = (CameraController)FindObjectOfType(typeof(CameraController));
+        transform.position = new Vector3(chunkMan.chunkSize/2, chunkMan.chunkSize/2, chunkMan.chunkSize/2);
     }
 
     void Update()
@@ -26,7 +29,7 @@ public class PlayerMovementController : MonoBehaviour
         float vertDirection = Input.GetAxis("Vertical");
         RaycastHit hit;
         Debug.DrawRay(transform.position - transform.up, -transform.up, Color.green);
-        if(Physics.Raycast(transform.position - transform.up, -transform.up, out hit, .25f) && Input.GetKeyDown(KeyCode.Space))
+        if(Physics.Raycast(transform.position - transform.up, -transform.up, out hit, 1f) && Input.GetKeyDown(KeyCode.Space))
         {
             moveDirY = jumpHeight;
         }

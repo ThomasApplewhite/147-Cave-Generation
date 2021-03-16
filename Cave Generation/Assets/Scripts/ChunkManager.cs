@@ -111,7 +111,7 @@ public class ChunkManager : MonoBehaviour
 
     void UpdateChunkMesh(Chunk chunk)
     {
-        List<Mesh> d = meshGenerator.MakeChunk(existingChunks, chunk.coord, 100, chunk.coord);
+        List<Mesh> d = meshGenerator.MakeChunk(existingChunks, chunk.coord, chunkSize, chunk.coord);
         Mesh[] submeshes = new Mesh[d.Count];
         int index = 0;
         foreach(Mesh m in d)

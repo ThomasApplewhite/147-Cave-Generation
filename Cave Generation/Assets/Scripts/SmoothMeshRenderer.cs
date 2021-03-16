@@ -7,10 +7,9 @@ using UnityEditor;
 
 public class SmoothMeshRenderer : MonoBehaviour
 {
-    public Material materialToUse;
     Mesh generatedMesh;
-
-	public int generatedVoxelsPerTick = 100;
+    [Header("Smooth shading increases load times significantly")]
+    public bool smoothShade = true;
     
     #region Lookup tables
     int[] edgeTable={
@@ -309,8 +308,6 @@ public class SmoothMeshRenderer : MonoBehaviour
     public struct ChunkData 
     {
         public List<Mesh> chunkMesh;
-        public Material chunkMaterial;
-        public bool generateColliders;
     }
 
     private void Start() {
@@ -427,18 +424,29 @@ public class SmoothMeshRenderer : MonoBehaviour
                 meshNormals[triIndices[(i * 3) + 2]] += cross;
             }
 
-            for(int i = 0; i<meshNormals.Length; i++)
+            Vector3[] smoothMeshNormals = null;
+            if(smoothShade)
             {
-                meshNormals[i] = Vector3.Normalize(meshNormals[i]);
+                smoothMeshNormals = new Vector3[meshNormals.Length];
+                for(int i = 0; i<meshNormals.Length; i++)
+                {
+                    //meshNormals[i] = Vector3.Normalize(meshNormals[i]);
+                    smoothMeshNormals[i] = ComputeVertexNormal(genVerts[i] - offset, meshNormals);
+                }
             }
+
             generatedMesh.triangles = triIndices;
-            generatedMesh.normals = meshNormals;
+            if(smoothShade)
+            {
+                generatedMesh.normals = smoothMeshNormals;
+            }
+            else
+            {
+                generatedMesh.normals = meshNormals;
+            }
             generatedMesh.colors = meshColors;
             
             thisChunk.chunkMesh.Add(generatedMesh);
-            thisChunk.chunkMaterial = materialToUse;
-            //Debug.Log(z + "z");
-            //z--; //go back a z to make sure everything touches (no gaps)
         }
         vertices.Clear();
         tris.Clear();
