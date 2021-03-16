@@ -14,6 +14,10 @@ public class Chunk : MonoBehaviour{
     bool generateCollider;
     public VoxelData data;
 
+    public bool visited;
+
+    public Chunk[] neighbors;
+
     public void DestroyOrDisable () {
         if (Application.isPlaying) {
             foreach(Mesh m in mesh)

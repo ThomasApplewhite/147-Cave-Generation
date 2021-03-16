@@ -163,6 +163,7 @@ public class PerlinWorm
             to the new pos, which is a vector3 representation of position.
             Luckily for us, Vector Addition is a defined operator in Unity.*/
             VoxelData voxelMap = world[currChunkCoord].data;
+            Debug.DrawRay(pos + (currChunkCoord * world[currChunkCoord].data.dataDepth), internalForward, Color.yellow, 100.0f, false);
             var newPos = pos + internalForward;
             //check if worm has exited chunk. if yes, move to new chunk
             if(newPos.x > voxelMap.dataWidth - 1 || newPos.y > voxelMap.dataHeight - 1 || newPos.z > voxelMap.dataDepth - 1|| newPos.x < 0 || newPos.y < 0 || newPos.z < 0)

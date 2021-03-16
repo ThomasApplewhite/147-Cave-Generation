@@ -224,6 +224,7 @@ GameObject:
   m_Component:
   - component: {fileID: 605342639}
   - component: {fileID: 605342638}
+  - component: {fileID: 605342640}
   m_Layer: 0
   m_Name: ChunkManager
   m_TagString: Untagged
@@ -245,8 +246,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   numChunks: {x: 3, y: 3, z: 3}
   mat: {fileID: 2100000, guid: 868b7024702d1e443952c4b7fba09418, type: 2}
-  chunkSize: 40
+  chunkSize: 100
   generateColliders: 1
+  seedInput: this is a new seed
+  maxWorms: 7
+  maxWormLength: 150
+  minWormLength: 20
+  maxWormRadius: 7
+  minWormRadius: 2
   wormSettings:
   - {x: 25, y: 4}
   - {x: 75, y: 2}
@@ -503,8 +510,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   walkSpeed: 5
-  jumpHeight: 5
-  gravity: 2
+  jumpHeight: 2
+  gravity: 10
 --- !u!23 &2106506887
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -579,7 +586,7 @@ CharacterController:
   serializedVersion: 2
   m_Height: 2
   m_Radius: 0.49999997
-  m_SlopeLimit: 45
+  m_SlopeLimit: 65
   m_StepOffset: 0.3
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
@@ -703,7 +710,8 @@ Transform:
   m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
   m_LocalPosition: {x: 0, y: 1.3699989, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
-  m_Children: []
+  m_Children:
+  - {fileID: 1840764804}
   m_Father: {fileID: 8432249554706449959}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}

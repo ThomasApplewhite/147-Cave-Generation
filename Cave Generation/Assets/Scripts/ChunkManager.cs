@@ -23,6 +23,7 @@ public class ChunkManager : MonoBehaviour
     GameObject chunkHolder;
     const string chunkHolderName = "Chunks Holder";
     List<Chunk> chunks;
+    List<bool> visited;
     Dictionary<Vector3Int, Chunk> existingChunks;
     Queue<Chunk> recycleableChunks;
 
@@ -31,6 +32,7 @@ public class ChunkManager : MonoBehaviour
     void Start() {
         meshGenerator = FindObjectOfType<SmoothMeshRenderer>();
         existingChunks = new Dictionary<Vector3Int, Chunk>();
+        visited = new List<bool>();
         rand = new System.Random(HashSeed());
         InitChunks ();
         WormifyChunks();
@@ -63,7 +65,7 @@ public class ChunkManager : MonoBehaviour
     void InitChunks () {
         CreateChunkHolder ();
         chunks = new List<Chunk> ();
-        List<Chunk> oldChunks = new List<Chunk> (FindObjectsOfType<Chunk> ());
+        List<Chunk> oldChunks = new List<Chunk>(chunks);
 
         // Go through all coords and create a chunk there if one doesn't already exist
         for (int x = 0; x < numChunks.x; x++) {
@@ -76,6 +78,7 @@ public class ChunkManager : MonoBehaviour
                     for (int i = 0; i < oldChunks.Count; i++) {
                         if (oldChunks[i].coord == coord) {
                             chunks.Add (oldChunks[i]);
+                            visited.Add(false);
                             oldChunks.RemoveAt (i);
                             chunkAlreadyExists = true;
                             break;
@@ -85,8 +88,9 @@ public class ChunkManager : MonoBehaviour
                     // Create new chunk
                     VoxelData data = null;
                     if (!chunkAlreadyExists) {
-                        var newChunk = CreateChunk (coord);
+                        Chunk newChunk = CreateChunk(coord);
                         chunks.Add (newChunk);
+                        visited.Add(false);
                         data = new VoxelData(chunkSize, chunkSize/2 * Vector3.one, coord);
                         newChunk.data = data;
                         existingChunks.Add(coord, newChunk);
@@ -118,9 +122,51 @@ public class ChunkManager : MonoBehaviour
 			    worm.Wormify(existingChunks, c.coord, new Vector3(chunkSize / 2, chunkSize / 2, chunkSize / 2), c.coord * chunkSize);
 		    }
         }
+
+        for (int i = 0; i< chunks.Count; i++)
+        {
+            if(!chunks[i].visited)
+            {
+                BuildPaths(chunks[i]);
+            }
+        }
         /*var walkableWorms = new PerlinWorm(1000, 5, new Vector3((chunks[0].data.dataWidth / 2) + chunks[0].coord.x, (chunks[0].data.dataHeight / 2) + chunks[0].coord.y, (chunks[0].data.dataDepth / 2) + chunks[0].coord.z),
              Mathf.Sin(1000), Mathf.Cos(10), Mathf.Tan(1010));
         walkableWorms.WalkableWorms(existingChunks, chunks[0].coord, chunks[1].coord, new Vector3(chunkSize / 2, chunkSize / 2, chunkSize / 2), chunks[0].coord * chunkSize);*/
+    }
+
+    void BuildPaths(Chunk node)//recursive DFS
+    {
+        if(node.visited)
+        {
+            return;
+        }
+        Chunk[] neighbors = new Chunk[8];
+        int ctr = 0;
+        for(int x = -1; x <= 1; x++)
+        {
+            for(int y = -1; y <= 1; y++)
+            {
+                for(int z = -1; z <= 1; z++)
+                {
+                    float chanceOfVisit = (float) rand.NextDouble();
+                    if(chanceOfVisit >= .75 && existingChunks.ContainsKey(node.coord + new Vector3Int(x, y, z)))
+                    {
+                        neighbors[ctr] = existingChunks[node.coord + new Vector3Int(x, y, z)];
+                    }
+                }
+            }
+        }
+        node.visited = true;
+        for(int j = 0; neighbors[j] != null; j++)
+        {
+            int wormLength = (int) minWormLength + (int)((float)rand.NextDouble() * (maxWormLength - minWormLength));
+            int wormRadius = (int) minWormRadius + (int)((float)rand.NextDouble() * (maxWormRadius - minWormRadius));
+            var walkableWorms = new PerlinWorm(node.data.dataWidth * 3, wormRadius, new Vector3((node.data.dataWidth / 2) + node.coord.x, (node.data.dataHeight / 2) + node.coord.y, (node.data.dataDepth / 2) + node.coord.z),
+                    Mathf.Sin(wormLength), Mathf.Cos(wormRadius), Mathf.Tan(wormLength + wormRadius));
+            walkableWorms.WalkableWorms(existingChunks, node.coord, neighbors[j].coord, new Vector3(chunkSize / 2, chunkSize / 2, chunkSize / 2), neighbors[j].coord * chunkSize);
+            BuildPaths(neighbors[j]);
+        }
     }
 
     SmoothMeshRenderer meshGenerator;
