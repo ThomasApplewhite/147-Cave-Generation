@@ -6,8 +6,6 @@ public class PerlinWorm
 {
     public int duration{ get; set; }
 
-    //public int stepDistance{ get; set; }
-
     public int clearRange{ get; set; }
 
     //these angles are in degrees, btw.
@@ -31,16 +29,12 @@ public class PerlinWorm
 
     private Vector3 internalForward = new Vector3(0f, 0f, 0f);
 
-    //private Vector3 realPosition = new Vector3(0, 0, 0);
-    System.Random rand;
     public PerlinWorm(int duration, int clearRange, Vector3 origin, float x=0, float y=0, float z=0)
     {
         this.duration = duration;
         this.clearRange = clearRange;
 
-        //rand = new System.Random((int)(x + y + z));
-        //Debug.Log("PerlinWormsSeed: " + (int)(x + y + z));
-
+        //initialize with random roll pitch yaw to add some variety
         this.wormRoll = PerlinNoise2D(x + origin.x, y + origin.y);
         this.wormPitch = PerlinNoise2D(y + origin.y, z + origin.z);
         this.wormYaw = PerlinNoise2D(x + origin.x, z + origin.z);
@@ -49,36 +43,28 @@ public class PerlinWorm
     public void Wormify(Dictionary<Vector3Int, Chunk> world, Vector3Int currChunkCoord, Vector3 pos, Vector3 offset, int time=0)
     {
         //Step 1: Clear where we currently are.
-        //RadialClear(voxelMap, clearRange, pos);
         RadialAdd(world[currChunkCoord].data, (int)(PerlinNoise3D(pos.x * 100, pos.y * 100, pos.z * 100) * clearRange/2)+ clearRange, pos);
-        //var rand = new System.Random((int)(pos.x + pos.y + pos.z));
 
         //Step 2: Check if we've done enough clears. If not, contiune
         if(time < duration)
         {
-            //making sure we don't go over the maximum rotations...
-            /*wormRoll = Mathf.Abs(newRoll) <= wormRollMax ? newRoll : wormRoll;
-            wormPitch = Mathf.Abs(newPitch) <= wormPitchMax ? newPitch : wormPitch;
-            wormYaw = Mathf.Abs(newYaw) <= wormYawMax ? newYaw : wormYaw;*/
-            
-            //Debug.Log($"Position is: {pos} Voxel bounds are: {voxelMap.dataHeight} around origin");
             //Step 3: Adjust Pitch and Yaw with their noise values
-            /*var newRoll = wormRoll + ((RollNoise(pos) * 270f) - 135f);
-            var newPitch = wormPitch + ((PitchNoise(pos)* 270f) - 135f);
-            var newYaw = wormYaw + ((YawNoise(pos)* 270f) - 135f);*/
-
-            var newRoll = wormRoll + (PerlinNoise3D(pos.x + (currChunkCoord * world[currChunkCoord].data.dataDepth).x, pos.y + (currChunkCoord * world[currChunkCoord].data.dataDepth).y, pos.z + (currChunkCoord * world[currChunkCoord].data.dataDepth).z) * 180);//this random function is going to make me SCREAM
-            var newPitch = wormPitch + (PerlinNoise3D(pos.z + (currChunkCoord * world[currChunkCoord].data.dataDepth).z, pos.x + (currChunkCoord * world[currChunkCoord].data.dataDepth).x, pos.y + (currChunkCoord * world[currChunkCoord].data.dataDepth).y) * 180);
-            var newYaw = wormYaw + (PerlinNoise3D(pos.y + (currChunkCoord * world[currChunkCoord].data.dataDepth).y, pos.x + (currChunkCoord * world[currChunkCoord].data.dataDepth).x, pos.z + (currChunkCoord * world[currChunkCoord].data.dataDepth).z) * 180);
+            var newRoll = wormRoll + (PerlinNoise3D(pos.x + (currChunkCoord * world[currChunkCoord].data.dataDepth).x, 
+                    pos.y + (currChunkCoord * world[currChunkCoord].data.dataDepth).y, 
+                    pos.z + (currChunkCoord * world[currChunkCoord].data.dataDepth).z) * 180);
+            var newPitch = wormPitch + (PerlinNoise3D(pos.z + (currChunkCoord * world[currChunkCoord].data.dataDepth).z, 
+                    pos.x + (currChunkCoord * world[currChunkCoord].data.dataDepth).x, 
+                    pos.y + (currChunkCoord * world[currChunkCoord].data.dataDepth).y) * 180);
+            var newYaw = wormYaw + (PerlinNoise3D(pos.y + (currChunkCoord * world[currChunkCoord].data.dataDepth).y, 
+                    pos.x + (currChunkCoord * world[currChunkCoord].data.dataDepth).x, 
+                    pos.z + (currChunkCoord * world[currChunkCoord].data.dataDepth).z) * 180);
 
             wormRoll = newRoll;
             wormPitch = newPitch;
             wormYaw = newYaw;
-            Debug.Log($"Rotation is Roll: {wormRoll} Pitch: {wormPitch} Yaw: {wormYaw}");
 
             //Step 4: Calculate a new position based on the new Yaw and Pitch that is "1" away i.e. normal
-            internalForward = new Vector3(wormRoll, wormPitch, wormYaw).normalized;// * this.clearRange;
-
+            internalForward = new Vector3(wormRoll, wormPitch, wormYaw).normalized;
 
             /*from my research and poor recollection of AMS 10, it is sufficient to add the original position
             (treating it as a vector from origin to pos) to the forward vector to create a vector from origin
@@ -87,50 +73,46 @@ public class PerlinWorm
             VoxelData voxelMap = world[currChunkCoord].data;
             Debug.DrawRay(pos + (currChunkCoord * world[currChunkCoord].data.dataDepth), internalForward, Color.black, 100.0f, false);
             var newPos = pos + internalForward;
-            if(newPos.x > voxelMap.dataWidth || newPos.y > voxelMap.dataHeight || newPos.z > voxelMap.dataDepth|| newPos.x < 0 || newPos.y < 0 || newPos.z < 0)
+            //check if we exit the chunk, if so, move to next chunk
+            if(newPos.x > voxelMap.dataWidth - 1 || newPos.y > voxelMap.dataHeight - 1 || newPos.z > voxelMap.dataDepth - 1|| newPos.x < 0 || newPos.y < 0 || newPos.z < 0)
             {
-                Debug.LogError("Worm is out of bounds of voxel data");
-                if(newPos.x > voxelMap.dataWidth)
+                if(newPos.x > voxelMap.dataWidth - 1)
                 {
                     currChunkCoord.x += 1;
-                    newPos.x = newPos.x - voxelMap.dataWidth;
+                    newPos.x = newPos.x - (voxelMap.dataWidth - 1);
                 }
                 else if(newPos.x < 0)
                 {
                     currChunkCoord.x -= 1;
-                    newPos.x = voxelMap.dataWidth + newPos.x;
+                    newPos.x = (voxelMap.dataWidth - 1) + newPos.x;
                 }
 
-                if(newPos.y > voxelMap.dataHeight)
+                if(newPos.y > voxelMap.dataHeight - 1)
                 {
                     currChunkCoord.y += 1;
-                    newPos.y = newPos.y - voxelMap.dataHeight;
+                    newPos.y = newPos.y - (voxelMap.dataHeight - 1);
                 }
                 else if(newPos.y < 0)
                 {
                     currChunkCoord.y -= 1;
-                    newPos.y = voxelMap.dataHeight + newPos.y;
+                    newPos.y = (voxelMap.dataHeight - 1) + newPos.y;
                 }
 
-                if(newPos.z > voxelMap.dataDepth)
+                if(newPos.z > voxelMap.dataDepth - 1)
                 {
                     currChunkCoord.z += 1;
-                    newPos.z = newPos.z - voxelMap.dataDepth;
+                    newPos.z = newPos.z - (voxelMap.dataDepth - 1);
                 }
                 else if(newPos.z < 0)
                 {
                     currChunkCoord.z -= 1;
-                    newPos.z = voxelMap.dataDepth + newPos.z;
+                    newPos.z = (voxelMap.dataDepth - 1) + newPos.z;
                 }
                 
             }
 
-
-            //Step 4.5: If the worm would go out-of-bounds, normalize it back in
-            //newPos = newPos.magnitude > voxelMap.dataWidth ? newPos 
-            //    : newPos.normalized * (newPos.magnitude % voxelMap.dataWidth);
-
-            //Step 5: Re[B]ursion: Repeat clearing step
+            //Step 5: Re[B]ursion: Repeat clearing step if the position is in an existing chunk
+            //and hasn't reached its desination yet, otherwise, return
             if(world.ContainsKey(currChunkCoord))
             {
                 Wormify(world, currChunkCoord, newPos, (currChunkCoord * world[currChunkCoord].data.dataDepth), time + 1);
@@ -139,98 +121,89 @@ public class PerlinWorm
             {
                 return;
             }
-
         }
-        
     }
 
     public void WalkableWorms(Dictionary<Vector3Int, Chunk> world, Vector3Int currChunkCoord, Vector3Int destChunkCoord, Vector3 pos, Vector3 offset, int time=0)
     {
-        //Step 1: Clear where we currently are.
-        //RadialClear(voxelMap, clearRange, pos);
-        RadialAdd(world[currChunkCoord].data, (int)(PerlinNoise3D(pos.x * 100, pos.y * 100, pos.z * 100) * clearRange/2)+ clearRange, pos);//(int)(PerlinNoise3D(pos.x * 100, pos.y * 100, pos.z * 100) * clearRange/2)+ 
-        //var rand = new System.Random((int)(pos.x + pos.y + pos.z));
+        //Step 1: Clear where we currently are, with the clear range modified by plus 
+        //or minus noise times half of the clear range
+        RadialAdd(world[currChunkCoord].data, (int)(PerlinNoise3D(pos.x * 100, pos.y * 100, pos.z * 100) * clearRange/2)+ clearRange, pos);
 
         //Step 2: Check if we've done enough clears. If not, contiune
         if(time < duration)
         {
-            //making sure we don't go over the maximum rotations...
-            /*wormRoll = Mathf.Abs(newRoll) <= wormRollMax ? newRoll : wormRoll;
-            wormPitch = Mathf.Abs(newPitch) <= wormPitchMax ? newPitch : wormPitch;
-            wormYaw = Mathf.Abs(newYaw) <= wormYawMax ? newYaw : wormYaw;*/
-            //Debug.Log($"Rotation is Roll: {wormRoll} Pitch: {wormPitch} Yaw: {wormYaw}");
-            //Debug.Log($"Position is: {pos} Voxel bounds are: {voxelMap.dataHeight} around origin");
-            //Step 3: Adjust Pitch and Yaw with their noise values
-            /*var newRoll = wormRoll + ((RollNoise(pos) * 270f) - 135f);
-            var newPitch = wormPitch + ((PitchNoise(pos)* 270f) - 135f);
-            var newYaw = wormYaw + ((YawNoise(pos)* 270f) - 135f);*/
+            //Step 3: Calculate the direction we want the worm to go in
             Vector3 destinationCenter = new Vector3(((destChunkCoord.x - currChunkCoord.x) * world[destChunkCoord].data.dataDepth) + world[destChunkCoord].data.dataWidth/2, ((destChunkCoord.y-currChunkCoord.y) * world[destChunkCoord].data.dataDepth) + world[destChunkCoord].data.dataHeight/2, ((destChunkCoord.z-currChunkCoord.z) * world[destChunkCoord].data.dataDepth) + world[destChunkCoord].data.dataDepth/2);
             Vector3 desiredDirection = (destinationCenter) - pos;
             desiredDirection = desiredDirection.normalized;
-            Debug.DrawRay(pos + (currChunkCoord * world[currChunkCoord].data.dataDepth), desiredDirection, Color.red, 100.0f, false);
-
-            var newRoll = wormRoll + PerlinNoise3D(pos.x + (currChunkCoord * world[currChunkCoord].data.dataDepth).x, pos.y + (currChunkCoord * world[currChunkCoord].data.dataDepth).y, pos.z + (currChunkCoord * world[currChunkCoord].data.dataDepth).z);//this random function is going to make me SCREAM
-            var newPitch = wormPitch + PerlinNoise3D(pos.z + (currChunkCoord * world[currChunkCoord].data.dataDepth).z, pos.x + (currChunkCoord * world[currChunkCoord].data.dataDepth).x, pos.y + (currChunkCoord * world[currChunkCoord].data.dataDepth).y);
-            var newYaw = wormYaw + PerlinNoise3D(pos.y + (currChunkCoord * world[currChunkCoord].data.dataDepth).y, pos.x + (currChunkCoord * world[currChunkCoord].data.dataDepth).x, pos.z + (currChunkCoord * world[currChunkCoord].data.dataDepth).z);
+            
+            //Step 4: Adjust Pitch and Yaw with their noise values multiplied by twice 
+            //the number of degrees you want to be able to rotate (180 = + or minus 90)
+            var newRoll = wormRoll + (PerlinNoise3D(pos.x + (currChunkCoord * world[currChunkCoord].data.dataDepth).x, 
+                    pos.y + (currChunkCoord * world[currChunkCoord].data.dataDepth).y, 
+                    pos.z + (currChunkCoord * world[currChunkCoord].data.dataDepth).z) * 180);
+            var newPitch = wormPitch + (PerlinNoise3D(pos.z + (currChunkCoord * world[currChunkCoord].data.dataDepth).z, 
+                    pos.x + (currChunkCoord * world[currChunkCoord].data.dataDepth).x, 
+                    pos.y + (currChunkCoord * world[currChunkCoord].data.dataDepth).y) * 180);
+            var newYaw = wormYaw + (PerlinNoise3D(pos.y + (currChunkCoord * world[currChunkCoord].data.dataDepth).y, 
+                    pos.x + (currChunkCoord * world[currChunkCoord].data.dataDepth).x, 
+                    pos.z + (currChunkCoord * world[currChunkCoord].data.dataDepth).z) * 180);
 
             wormRoll = newRoll;
             wormPitch = newPitch;
             wormYaw = newYaw;
 
-            //Step 4: Calculate a new position based on the new Yaw and Pitch that is "1" away i.e. normal
-            internalForward = (((new Vector3(wormRoll, wormPitch, wormYaw) * (1f/10f)) + desiredDirection)/2).normalized;// * this.clearRange;  
-            Debug.Log($"Current position {pos} Desired destination {destinationCenter} Dist {Vector3.Distance(pos, destinationCenter)} clearRange {clearRange}");
+            //Step 5: Calculate a new position based on the desired direction, modified 
+            //by the yaw/pitch/roll that is "1" away i.e. normal
+            internalForward = (((new Vector3(wormRoll, wormPitch, wormYaw) * (1f/500f)) + desiredDirection)/2).normalized;
 
             /*from my research and poor recollection of AMS 10, it is sufficient to add the original position
             (treating it as a vector from origin to pos) to the forward vector to create a vector from origin
             to the new pos, which is a vector3 representation of position.
             Luckily for us, Vector Addition is a defined operator in Unity.*/
             VoxelData voxelMap = world[currChunkCoord].data;
-            Debug.DrawRay(pos + (currChunkCoord * world[currChunkCoord].data.dataDepth), internalForward, Color.yellow, 100.0f, false);
             var newPos = pos + internalForward;
-            if(newPos.x > voxelMap.dataWidth || newPos.y > voxelMap.dataHeight || newPos.z > voxelMap.dataDepth|| newPos.x < 0 || newPos.y < 0 || newPos.z < 0)
+            //check if worm has exited chunk. if yes, move to new chunk
+            if(newPos.x > voxelMap.dataWidth - 1 || newPos.y > voxelMap.dataHeight - 1 || newPos.z > voxelMap.dataDepth - 1|| newPos.x < 0 || newPos.y < 0 || newPos.z < 0)
             {
-                Debug.DrawRay(pos + (currChunkCoord * world[currChunkCoord].data.dataDepth), internalForward, Color.yellow, 100.0f, false);
-                Debug.LogError("Worm is out of bounds of voxel data");
-                if(newPos.x > voxelMap.dataWidth)
+                if(newPos.x > voxelMap.dataWidth - 1)
                 {
                     currChunkCoord.x += 1;
-                    newPos.x = newPos.x - voxelMap.dataWidth;
+                    newPos.x = newPos.x - (voxelMap.dataWidth - 1);
                 }
                 else if(newPos.x < 0)
                 {
                     currChunkCoord.x -= 1;
-                    newPos.x = voxelMap.dataWidth + newPos.x;
+                    newPos.x = (voxelMap.dataWidth - 1) + newPos.x;
                 }
 
-                if(newPos.y > voxelMap.dataHeight)
+                if(newPos.y > voxelMap.dataHeight - 1)
                 {
                     currChunkCoord.y += 1;
-                    newPos.y = newPos.y - voxelMap.dataHeight;
+                    newPos.y = newPos.y - (voxelMap.dataHeight - 1);
                 }
                 else if(newPos.y < 0)
                 {
                     currChunkCoord.y -= 1;
-                    newPos.y = voxelMap.dataHeight + newPos.y;
+                    newPos.y = (voxelMap.dataHeight - 1) + newPos.y;
                 }
 
-                if(newPos.z > voxelMap.dataDepth)
+                if(newPos.z > voxelMap.dataDepth - 1)
                 {
                     currChunkCoord.z += 1;
-                    newPos.z = newPos.z - voxelMap.dataDepth;
+                    newPos.z = newPos.z - (voxelMap.dataDepth - 1);
                 }
                 else if(newPos.z < 0)
                 {
                     currChunkCoord.z -= 1;
-                    newPos.z = voxelMap.dataDepth + newPos.z;
+                    newPos.z = (voxelMap.dataDepth - 1) + newPos.z;
                 }
                 
             }
-            //Step 4.5: If the worm would go out-of-bounds, normalize it back in
-            //newPos = newPos.magnitude > voxelMap.dataWidth ? newPos 
-            //    : newPos.normalized * (newPos.magnitude % voxelMap.dataWidth);
 
-            //Step 5: Re[B]ursion: Repeat clearing step
+            //Step 5: Re[B]ursion: Repeat clearing step if the position is in an existing chunk
+            //and hasn't reached its desination yet, otherwise, return
             if(currChunkCoord == destChunkCoord && Vector3.Distance(pos, destinationCenter) < clearRange)
             {
                 return;
@@ -242,47 +215,11 @@ public class PerlinWorm
         }
     }
 
-    void RadialClear(VoxelData map, int range, Vector3 origin)
-    {
-        //Debug.Log("Clearing around " + origin);
-        var rangef = (float)range;
-        //double check to make sure the 
-        /*Not sure what I was thinking here, the basics is make sure that this loop doesn't
-        go out of bounds of range, map.data(AXIS) - 1 for any axis
-        /int orX = origin.x >= (float)range ? Mathf.FloorToInt(origin.x % map.dataWidth) : range;
-        int orY = origin.y >= (float)range ? Mathf.FloorToInt(origin.y % map.dataWidth) : range;
-        int orZ = origin.z >= (float)range ? Mathf.FloorToInt(origin.z % map.dataWidth) : range;*/
-        int minX = origin.x - rangef >= 0 ? (int)(origin.x - rangef) : 0;
-        int maxX = origin.x + rangef < map.dataWidth ? (int)(origin.x + rangef) : map.dataWidth - 1;
-
-        int minY = origin.y - rangef >= 0 ? (int)(origin.y - rangef) : 0;
-        int maxY = origin.y + rangef < map.dataHeight ? (int)(origin.y + rangef) : map.dataHeight - 1;
-
-        int minZ = origin.z - rangef >= 0 ? (int)(origin.z - rangef) : 0;
-        int maxZ = origin.z + rangef < map.dataDepth ? (int)(origin.z + rangef) : map.dataDepth - 1;
-
-        for(int x = minX; x <= maxX; ++x)
-        {
-            for(int y = minY; y <= maxY; ++y)
-            {
-                for(int z = minZ; z <= maxZ; ++z)
-                {
-                    map.SetCell(rangef - (rangef)/Vector3.Distance(origin, new Vector3(x, y, z)), x, y, z);
-                }
-            }
-        }
-    }
-
     void RadialAdd(VoxelData map, int range, Vector3 origin)
     {
-        //Debug.Log("Adding around " + origin);
         var rangef = (float)range;
-        //double check to make sure the 
-        /*Not sure what I was thinking here, the basics is make sure that this loop doesn't
-        go out of bounds of range, map.data(AXIS) - 1 for any axis
-        /int orX = origin.x >= (float)range ? Mathf.FloorToInt(origin.x % map.dataWidth) : range;
-        int orY = origin.y >= (float)range ? Mathf.FloorToInt(origin.y % map.dataWidth) : range;
-        int orZ = origin.z >= (float)range ? Mathf.FloorToInt(origin.z % map.dataWidth) : range;*/
+        /*The basics is make sure that this loop doesn't
+        go out of bounds of range, map.data(AXIS) - 1 for any axis*/
         int minX = origin.x - 2*rangef >= 0 ? (int)(origin.x - 2*rangef) : 0;
         int maxX = origin.x + 2*rangef < map.dataWidth ? (int)(origin.x + 2*rangef) : map.dataWidth - 1;
 
@@ -298,7 +235,7 @@ public class PerlinWorm
             {
                 for(int z = minZ; z <= maxZ; ++z)
                 {
-                    //
+                    //if this cell is "empty" and we're in range, set to 1
                     if(map.GetCell(x, y, z) <= -1 && Vector3.Distance(origin, new Vector3(x, y, z)) <= rangef)
                     {
                         map.SetCell(1, x, y, z);
@@ -309,6 +246,7 @@ public class PerlinWorm
     }
 
     //Everything in the 3D noise functions taken from https://github.com/keijiro/PerlinNoise/blob/master/Assets/Perlin.cs
+    //this perlin implementation based on the og : https://mrl.cs.nyu.edu/~perlin/noise/
     public static float PerlinNoise3D(float x, float y, float z)
     {
         var X = Mathf.FloorToInt(x) & 0xff;
@@ -371,7 +309,7 @@ public class PerlinWorm
         138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180,
         151
     };
-    static float Grad(int hash, float x, float y, float z)
+    static float Grad(int hash, float x, float y, float z) //3D
     {
         var h = hash & 15;
         var u = h < 8 ? x : y;
@@ -379,7 +317,7 @@ public class PerlinWorm
         return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);
     }
 
-    static float Grad(int hash, float x, float y)
+    static float Grad(int hash, float x, float y) //2D
     {
         return ((hash & 1) == 0 ? x : -x) + ((hash & 2) == 0 ? y : -y);
     }
