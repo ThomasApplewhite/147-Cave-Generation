@@ -88,9 +88,9 @@ public class ChunkManager : MonoBehaviour
 			    worm.Wormify(existingChunks, c.coord, new Vector3(chunkSize / 2, chunkSize / 2, chunkSize / 2), c.coord * chunkSize);
 		    }
         }
-        //var walkableWorms = new PerlinWorm(1000, 5, new Vector3((chunks[0].data.dataWidth / 2) + chunks[0].coord.x, (chunks[0].data.dataHeight / 2) + chunks[0].coord.y, (chunks[0].data.dataDepth / 2) + chunks[0].coord.z),
-        //     Mathf.Sin(1000), Mathf.Cos(10), Mathf.Tan(1010));
-        //walkableWorms.WalkableWorms(existingChunks, chunks[0].coord, chunks[1].coord, new Vector3(chunkSize / 2, chunkSize / 2, chunkSize / 2), chunks[0].coord * chunkSize);
+        var walkableWorms = new PerlinWorm(1000, 5, new Vector3((chunks[0].data.dataWidth / 2) + chunks[0].coord.x, (chunks[0].data.dataHeight / 2) + chunks[0].coord.y, (chunks[0].data.dataDepth / 2) + chunks[0].coord.z),
+             Mathf.Sin(1000), Mathf.Cos(10), Mathf.Tan(1010));
+        walkableWorms.WalkableWorms(existingChunks, chunks[0].coord, chunks[1].coord, new Vector3(chunkSize / 2, chunkSize / 2, chunkSize / 2), chunks[0].coord * chunkSize);
     }
     SmoothMeshRenderer meshGenerator;
     Chunk CreateChunk (Vector3Int coord) {
@@ -120,8 +120,10 @@ public class ChunkManager : MonoBehaviour
             GameObject chunkSub = new GameObject("Submesh " + index);
             MeshFilter mFilt = chunkSub.AddComponent<MeshFilter>();
             MeshRenderer mRend = chunkSub.AddComponent<MeshRenderer>();
+            MeshCollider mCol = chunkSub.AddComponent<MeshCollider>();
             mFilt.sharedMesh = m;
             mRend.material = mat;
+            mCol.sharedMesh = m;
             chunkSub.transform.parent = chunk.transform;
             index++;
         }

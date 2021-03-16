@@ -164,7 +164,7 @@ public class PerlinWorm
             /*var newRoll = wormRoll + ((RollNoise(pos) * 270f) - 135f);
             var newPitch = wormPitch + ((PitchNoise(pos)* 270f) - 135f);
             var newYaw = wormYaw + ((YawNoise(pos)* 270f) - 135f);*/
-            Vector3 destinationCenter = new Vector3((destChunkCoord.x * world[destChunkCoord].data.dataDepth) + world[destChunkCoord].data.dataWidth/2, (destChunkCoord.y * world[destChunkCoord].data.dataDepth) + world[destChunkCoord].data.dataHeight/2, (destChunkCoord.z * world[destChunkCoord].data.dataDepth) + world[destChunkCoord].data.dataDepth/2);
+            Vector3 destinationCenter = new Vector3(((destChunkCoord.x - currChunkCoord.x) * world[destChunkCoord].data.dataDepth) + world[destChunkCoord].data.dataWidth/2, ((destChunkCoord.y-currChunkCoord.y) * world[destChunkCoord].data.dataDepth) + world[destChunkCoord].data.dataHeight/2, ((destChunkCoord.z-currChunkCoord.z) * world[destChunkCoord].data.dataDepth) + world[destChunkCoord].data.dataDepth/2);
             Vector3 desiredDirection = (destinationCenter) - pos;
             desiredDirection = desiredDirection.normalized;
             Debug.DrawRay(pos + (currChunkCoord * world[currChunkCoord].data.dataDepth), desiredDirection, Color.red, 100.0f, false);
@@ -179,7 +179,7 @@ public class PerlinWorm
 
             //Step 4: Calculate a new position based on the new Yaw and Pitch that is "1" away i.e. normal
             internalForward = (((new Vector3(wormRoll, wormPitch, wormYaw) * (1f/10f)) + desiredDirection)/2).normalized;// * this.clearRange;  
-            Debug.Log($"Internal forward: {internalForward} Roll/Pitch/Yaw {new Vector3(wormRoll, wormPitch, wormYaw)} Desired Direction: {desiredDirection}");
+            Debug.Log($"Current position {pos} Desired destination {destinationCenter} Dist {Vector3.Distance(pos, destinationCenter)} clearRange {clearRange}");
 
             /*from my research and poor recollection of AMS 10, it is sufficient to add the original position
             (treating it as a vector from origin to pos) to the forward vector to create a vector from origin
@@ -231,15 +231,14 @@ public class PerlinWorm
             //    : newPos.normalized * (newPos.magnitude % voxelMap.dataWidth);
 
             //Step 5: Re[B]ursion: Repeat clearing step
-            if(world.ContainsKey(currChunkCoord))
-            {
-                WalkableWorms(world, currChunkCoord, destChunkCoord, newPos, (currChunkCoord * world[currChunkCoord].data.dataDepth), time + 1);
-            }
-            else
+            if(currChunkCoord == destChunkCoord && Vector3.Distance(pos, destinationCenter) < clearRange)
             {
                 return;
             }
-
+            if(world.ContainsKey(currChunkCoord))// Vector3.Distance(pos, destinationCenter) > clearRange &&
+            {
+                WalkableWorms(world, currChunkCoord, destChunkCoord, newPos, (currChunkCoord * world[currChunkCoord].data.dataDepth), time + 1);
+            }
         }
     }
 
@@ -284,30 +283,25 @@ public class PerlinWorm
         /int orX = origin.x >= (float)range ? Mathf.FloorToInt(origin.x % map.dataWidth) : range;
         int orY = origin.y >= (float)range ? Mathf.FloorToInt(origin.y % map.dataWidth) : range;
         int orZ = origin.z >= (float)range ? Mathf.FloorToInt(origin.z % map.dataWidth) : range;*/
-        int minX = origin.x - rangef >= 0 ? (int)(origin.x - rangef) : 0;
-        int maxX = origin.x + rangef < map.dataWidth ? (int)(origin.x + rangef) : map.dataWidth - 1;
+        int minX = origin.x - 2*rangef >= 0 ? (int)(origin.x - 2*rangef) : 0;
+        int maxX = origin.x + 2*rangef < map.dataWidth ? (int)(origin.x + 2*rangef) : map.dataWidth - 1;
 
-        int minY = origin.y - rangef >= 0 ? (int)(origin.y - rangef) : 0;
-        int maxY = origin.y + rangef < map.dataHeight ? (int)(origin.y + rangef) : map.dataHeight - 1;
+        int minY = origin.y - 2*rangef >= 0 ? (int)(origin.y - 2*rangef) : 0;
+        int maxY = origin.y + 2*rangef < map.dataHeight ? (int)(origin.y + 2*rangef) : map.dataHeight - 1;
 
-        int minZ = origin.z - rangef >= 0 ? (int)(origin.z - rangef) : 0;
-        int maxZ = origin.z + rangef < map.dataDepth ? (int)(origin.z + rangef) : map.dataDepth - 1;
+        int minZ = origin.z - 2*rangef >= 0 ? (int)(origin.z - 2*rangef) : 0;
+        int maxZ = origin.z + 2*rangef < map.dataDepth ? (int)(origin.z + 2*rangef) : map.dataDepth - 1;
 
         for(int x = minX; x <= maxX; ++x)
         {
-            Debug.Log($"Distance: {Vector3.Distance(origin, new Vector3(x, minY, minZ))} rangef {rangef} Set Cell: " + (Vector3.Distance(origin, new Vector3(x, minY, minZ)) - rangef));
             for(int y = minY; y <= maxY; ++y)
             {
                 for(int z = minZ; z <= maxZ; ++z)
                 {
                     //
-                    if(Vector3.Distance(origin, new Vector3(x, y, z)) <= rangef)
+                    if(map.GetCell(x, y, z) <= -1 && Vector3.Distance(origin, new Vector3(x, y, z)) <= rangef)
                     {
-                        map.SetCell(1f, x, y, z);
-                    }
-                    else
-                    {
-                        map.SetCell(-1.0f, x, y, z);
+                        map.SetCell(1, x, y, z);
                     }
                 }
             }

@@ -85,7 +85,7 @@ public class VoxelData
 
     float AllZeros(Vector3 x)
     {
-        return -100f;
+        return -1f;
     }
 
     int FlatPerlinNoise(Vector3 v)

@@ -328,18 +328,6 @@ public class SmoothMeshRenderer : MonoBehaviour
 
         vertices = new List<Vector3>();
         tris = new List<Vector3>();
-        VoxelData d = world[currChunkCoord].data;
-        for(int x = 0; x < d.dataWidth; x++)
-        {
-            for(int y = 0; y < d.dataWidth; y++)
-            {
-                for(int z = 0; z < d.dataWidth; z++)
-                {
-                    Debug.DrawRay(new Vector3(x, y, z), Vector3.one, new Color((d.dataArray[x,y,z] + 1)/2, (d.dataArray[x,y,z] + 1)/2, (d.dataArray[x,y,z]+ 1)/2));
-                }
-            }
-        }
-        //return null;
         return GenerateMeshInput(world, currChunkCoord, offset * chunkSize).chunkMesh;
     }
 
@@ -465,14 +453,14 @@ public class SmoothMeshRenderer : MonoBehaviour
     int Polygonize(GridData gridCell, float isolevel, List<Vector3> triangles, List<Vector3> localVertices, out int newVertexCount)
     {
         int cubeindex = 0;
-        if (gridCell.value[0] < isolevel) cubeindex |= 1;
-        if (gridCell.value[1] < isolevel) cubeindex |= 2;
-        if (gridCell.value[2] < isolevel) cubeindex |= 4;
-        if (gridCell.value[3] < isolevel) cubeindex |= 8;
-        if (gridCell.value[4] < isolevel) cubeindex |= 16;
-        if (gridCell.value[5] < isolevel) cubeindex |= 32;
-        if (gridCell.value[6] < isolevel) cubeindex |= 64;
-        if (gridCell.value[7] < isolevel) cubeindex |= 128;
+        if (gridCell.value[0] <= isolevel) cubeindex |= 1;
+        if (gridCell.value[1] <= isolevel) cubeindex |= 2;
+        if (gridCell.value[2] <= isolevel) cubeindex |= 4;
+        if (gridCell.value[3] <= isolevel) cubeindex |= 8;
+        if (gridCell.value[4] <= isolevel) cubeindex |= 16;
+        if (gridCell.value[5] <= isolevel) cubeindex |= 32;
+        if (gridCell.value[6] <= isolevel) cubeindex |= 64;
+        if (gridCell.value[7] <= isolevel) cubeindex |= 128;
 
         Vector3[] vertlist = new Vector3[12];
         Vector3[] newVertList = new Vector3[12];
