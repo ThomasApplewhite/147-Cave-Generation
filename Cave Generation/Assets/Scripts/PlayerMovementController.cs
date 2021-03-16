@@ -34,7 +34,7 @@ public class PlayerMovementController : MonoBehaviour
         {
             moveDirY -= gravity * Time.deltaTime;
         }
-        Debug.Log("hit: " + hit.transform);
+        //Debug.Log("hit: " + hit.transform);
         Vector3 moveDirection = new Vector3(-horizDirection, moveDirY, -vertDirection);
         moveDirection = transform.TransformDirection(moveDirection);
         playerController.Move(moveDirection * walkSpeed * Time.deltaTime);
