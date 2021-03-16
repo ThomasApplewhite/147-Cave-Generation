@@ -156,7 +156,7 @@ public class PerlinWorm
 
             //Step 5: Calculate a new position based on the desired direction, modified 
             //by the yaw/pitch/roll that is "1" away i.e. normal
-            internalForward = (((new Vector3(wormRoll, wormPitch, wormYaw) * (1f/500f)) + desiredDirection)/2).normalized;
+            internalForward = (((new Vector3(wormRoll, wormPitch, wormYaw) * (1f/1000f)) + desiredDirection)/2).normalized;
 
             /*from my research and poor recollection of AMS 10, it is sufficient to add the original position
             (treating it as a vector from origin to pos) to the forward vector to create a vector from origin
@@ -200,7 +200,6 @@ public class PerlinWorm
                     currChunkCoord.z -= 1;
                     newPos.z = (voxelMap.dataDepth - 1) + newPos.z;
                 }
-                
             }
 
             //Step 5: Re[B]ursion: Repeat clearing step if the position is in an existing chunk
