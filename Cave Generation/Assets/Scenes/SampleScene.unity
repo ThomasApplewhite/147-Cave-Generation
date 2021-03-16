@@ -248,8 +248,8 @@ MonoBehaviour:
   chunkSize: 100
   generateColliders: 1
   wormSettings:
-  - {x: 25, y: 3}
-  - {x: 75, y: 1}
+  - {x: 25, y: 4}
+  - {x: 75, y: 2}
   - {x: 50, y: 2}
   - {x: 100, y: 3}
 --- !u!4 &605342639

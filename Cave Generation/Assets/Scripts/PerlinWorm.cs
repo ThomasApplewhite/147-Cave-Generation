@@ -50,7 +50,7 @@ public class PerlinWorm
     {
         //Step 1: Clear where we currently are.
         //RadialClear(voxelMap, clearRange, pos);
-        RadialAdd(world[currChunkCoord].data, clearRange, pos);
+        RadialAdd(world[currChunkCoord].data, (int)(PerlinNoise3D(pos.x * 100, pos.y * 100, pos.z * 100) * clearRange/2)+ clearRange, pos);
         //var rand = new System.Random((int)(pos.x + pos.y + pos.z));
 
         //Step 2: Check if we've done enough clears. If not, contiune
@@ -148,7 +148,7 @@ public class PerlinWorm
     {
         //Step 1: Clear where we currently are.
         //RadialClear(voxelMap, clearRange, pos);
-        RadialAdd(world[currChunkCoord].data, clearRange, pos);//(int)(PerlinNoise3D(pos.x * 100, pos.y * 100, pos.z * 100) * clearRange/2)+ 
+        RadialAdd(world[currChunkCoord].data, (int)(PerlinNoise3D(pos.x * 100, pos.y * 100, pos.z * 100) * clearRange/2)+ clearRange, pos);//(int)(PerlinNoise3D(pos.x * 100, pos.y * 100, pos.z * 100) * clearRange/2)+ 
         //var rand = new System.Random((int)(pos.x + pos.y + pos.z));
 
         //Step 2: Check if we've done enough clears. If not, contiune
