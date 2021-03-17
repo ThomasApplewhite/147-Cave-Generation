@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEditor;
 
 public class ChunkManager : MonoBehaviour
 {
@@ -204,5 +205,22 @@ public class ChunkManager : MonoBehaviour
         }
         chunk.mesh = submeshes;
         //chunk.meshFilter.mesh = chunk.mesh;
+    }
+
+    public void SaveScene()
+    {
+        //PrefabUtility.SaveAsPrefabAsset(chunkHolder, "Assets/LevelPrefab.prefab");
+        
+        foreach(Chunk c in chunks)
+        {
+            int meshCtr = 0;
+            foreach(Mesh m in c.mesh)
+            {
+                AssetDatabase.CreateAsset(m, "Assets/LastSavedLevel/LevelObject" + c.coord + "" + meshCtr + ".asset");
+                //AssetDatabase.AddObjectToAsset(mat, "Assets/LastSavedLevel/LevelObject" + c.coord + "" + meshCtr + ".asset");
+                meshCtr ++;
+            }
+        }
+        AssetDatabase.SaveAssets();
     }
 }

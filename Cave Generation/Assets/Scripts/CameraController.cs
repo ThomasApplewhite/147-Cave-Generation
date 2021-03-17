@@ -29,7 +29,7 @@ public class CameraController : MonoBehaviour
     void Start()
     {
         player = (PlayerMovementController)FindObjectOfType(typeof(PlayerMovementController));
-        UnityEngine.Cursor.lockState = CursorLockMode.Locked;
+        //UnityEngine.Cursor.lockState = CursorLockMode.Locked;
 
         if (Input.GetKey(KeyCode.Escape))
         {
