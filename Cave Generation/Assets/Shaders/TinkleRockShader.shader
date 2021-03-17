@@ -46,6 +46,7 @@ Shader "Custom/TwinkleRockShader"
             // put more per-instance properties here
         UNITY_INSTANCING_BUFFER_END(Props)
 
+        //David Hoskins
         float hash11(float p)
         {
             p = frac(p * .1031);
@@ -55,6 +56,7 @@ Shader "Custom/TwinkleRockShader"
         }
 
         //  1 out, 3 in...
+        //also David Hoskins
         float hash13(float3 p3)
         {
 	        p3  = frac(p3 * .1031);
@@ -67,20 +69,22 @@ Shader "Custom/TwinkleRockShader"
         bool isInTwinkle(float2 uv, float4 seed)
         {
             float twinkleSlope = 500;
-            float twinkleSeed = hash13(seed.xyz);
+            float twinkleSeed = hash13(seed.xyz * floor(uv.x) * floor(uv.y));
             float centerX = twinkleSeed;
             float centerY = hash11(twinkleSeed);
 
             float twinkleSpeed = 100;
-            float twinkleMaxSize = 10;
+            float twinkleMaxSize = 5;
             //mod by 2pi to minimize twinkles twinkling with similar offsets
             float twinkleOffset = twinkleSeed % 2 * 3.14159265f;
             float _twinkleWidth = (sin((_Time * twinkleSpeed) - twinkleOffset) + 1)/(2 * twinkleMaxSize);
             float _twinkleHeight = (sin((_Time * twinkleSpeed) - twinkleOffset) + 1)/(2 * twinkleMaxSize);
 
-            bool goodGraph = uv.y <= abs(1/(twinkleSlope * (uv.x - centerX))) + centerY && uv.y >= -1 * (abs(1/(twinkleSlope * (uv.x - centerX)))) + centerY;
-            bool goodX = uv.x > centerX - _twinkleWidth && uv.x < centerX + _twinkleWidth;
-            bool goodY = uv.y > centerY - _twinkleHeight && uv.y < centerY + _twinkleHeight;
+            bool goodGraph = frac(uv.y) <= abs(1/(twinkleSlope * (frac(uv.x) - centerX))) + centerY && frac(uv.y) >= -1 * (abs(1/(twinkleSlope * (frac(uv.x) - centerX)))) + centerY;
+            bool goodX = frac(uv.x) > centerX - _twinkleWidth && frac(uv.x) < centerX + _twinkleWidth;
+            bool goodY = frac(uv.y) > centerY - _twinkleHeight && frac(uv.y) < centerY + _twinkleHeight;
+
+            //bool debugRangeX = frac(uv.x) > 0.5 && frac(uv.y) > 0.5;//(uv.x % 5 < 1 && uv.y % 5 < 1);
 
             return goodGraph && goodX && goodY;
         }
