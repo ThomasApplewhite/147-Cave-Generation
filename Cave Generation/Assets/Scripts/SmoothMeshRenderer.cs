@@ -397,7 +397,7 @@ public class SmoothMeshRenderer : MonoBehaviour
             {
                 genVerts[i] = vertices[i] + offset;
                 Vector3 vertValue = (vertices[i]); 
-                meshColors[i] = new Color(vertValue.y/100f, vertValue.y/100f, vertValue.y/100f);
+                //meshColors[i] = new Color(vertValue.y/100f, vertValue.y/100f, vertValue.y/100f);
             }
             generatedMesh.vertices = genVerts;
 
@@ -412,6 +412,10 @@ public class SmoothMeshRenderer : MonoBehaviour
                 meshNormals[triIndices[(i * 3)]] += cross;
                 meshNormals[triIndices[(i * 3) + 1]] += cross;
                 meshNormals[triIndices[(i * 3) + 2]] += cross;
+
+                meshColors[triIndices[(i * 3)]] = new Color((float)i/((triIndices.Length/3) - 2), (float)i/((triIndices.Length/3) - 2), (float)i/((triIndices.Length/3) - 2));
+                meshColors[triIndices[(i * 3) + 1]] = new Color((float)i/((triIndices.Length/3) - 2), (float)i/((triIndices.Length/3) - 2), (float)i/((triIndices.Length/3) - 2));
+                meshColors[triIndices[(i * 3) + 1]] = new Color((float)i/((triIndices.Length/3) - 2), (float)i/((triIndices.Length/3) - 2), (float)i/((triIndices.Length/3) - 2));
             }
             generatedMesh.triangles = triIndices;
 
@@ -421,7 +425,7 @@ public class SmoothMeshRenderer : MonoBehaviour
             if(smoothShade)
             {
                 smoothMeshNormals = new Vector3[meshNormals.Length];
-                for(int i = 0; i<smoothMeshNormals.Length; i++)
+                /*for(int i = 0; i<smoothMeshNormals.Length; i++)
                 {
                     smoothMeshNormals[i] = ComputeVertexNormal(genVerts[i] - offset, meshNormals);
                     if(rand.NextDouble() < .0001)
@@ -431,6 +435,12 @@ public class SmoothMeshRenderer : MonoBehaviour
                         //cRot.SetLookRotation(arbitraryForwards, smoothMeshNormals[i]);
                         Instantiate(crystal, genVerts[i], cRot);
                     }
+                }*/
+                for(int i = 0; i<tris.Count; i++)
+                {
+                    smoothMeshNormals[(int)tris[i].z] = ComputeVertexNormal(genVerts[(int)tris[i].z] - offset, i,  (int)tris[i].z, meshNormals);
+                    smoothMeshNormals[(int)tris[i].y] = ComputeVertexNormal(genVerts[(int)tris[i].y] - offset, i,  (int)tris[i].y, meshNormals);
+                    smoothMeshNormals[(int)tris[i].x] = ComputeVertexNormal(genVerts[(int)tris[i].x] - offset, i,  (int)tris[i].x, meshNormals);
                 }
             }
             else
@@ -474,12 +484,16 @@ public class SmoothMeshRenderer : MonoBehaviour
         return chunkMesh;
     }
 
-    Vector3 ComputeVertexNormal(Vector3 vertex, Vector3[] meshNormals)
+    Vector3 ComputeVertexNormal(Vector3 vertex, int triIndex, int vertIndex, Vector3[] meshNormals)
     {
         //find faces around current vertex
         List<int> adjFaces = new List<int>();
-        int pFace = 0;
-        for(int i = 0; i<tris.Count; i++, pFace ++)
+                    //newPos = newPos.magnitude > voxelMap.dataWidth ? newPos 
+            //    : newPos.normalized * (newPos.magnitude % voxelMap.dataWidth);
+        int startIndex = triIndex - 400 > 0 ? triIndex - 400 : 0;
+        int endIndex = triIndex + 400 <= tris.Count ? triIndex + 400 : tris.Count;
+        int pFace = startIndex;
+        for(int i = startIndex; i<endIndex; i++, pFace ++)
         {
             if(vertices[(int)tris[pFace].x] == vertex)
             {
